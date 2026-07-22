@@ -17,6 +17,8 @@ type Test
     = ElmTestVariant__UnitTest (() -> Expectation)
     | ElmTestVariant__FuzzTest (Maybe Int) (Random.Seed -> Int -> NotifyRunStarted -> Expectation)
     | ElmTestVariant__Labeled String Test
+      -- Only constructed (directly from JS) in runners, to associate a tag with tests for caching purposes.
+    | ElmTestVariant__Tagged String Test
     | ElmTestVariant__Skipped Test
     | ElmTestVariant__Only Test
     | ElmTestVariant__Batch (List Test)
@@ -54,6 +56,9 @@ duplicatedName tests =
             case test of
                 ElmTestVariant__Labeled str _ ->
                     [ str ]
+
+                ElmTestVariant__Tagged _ _ ->
+                    []
 
                 ElmTestVariant__Batch subtests ->
                     List.concatMap names subtests

@@ -138,7 +138,8 @@ type alias Tests =
 {-| Exposed
 -}
 type alias UnitTest =
-    { labels : List String
+    { tag : String
+    , labels : List String
     , thunk : () -> UnitTestExpectation
     }
 
@@ -146,7 +147,8 @@ type alias UnitTest =
 {-| Exposed
 -}
 type alias FuzzTest =
-    { labels : List String
+    { tag : String
+    , labels : List String
     , thunk : Random.Seed -> Int -> (() -> ()) -> FuzzTestExpectation
     , runs : Maybe Int
     }
@@ -197,7 +199,7 @@ fromTestV2 : Test -> Tests
 fromTestV2 test =
     let
         intermediateTests =
-            fromTestV2Helper [] test
+            fromTestV2Helper "" [] test
     in
     case intermediateTests.tests of
         Regular tests ->
@@ -215,14 +217,15 @@ fromTestV2 test =
             }
 
 
-fromTestV2Helper : List String -> Test -> IntermediateTests
-fromTestV2Helper labels test =
+fromTestV2Helper : String -> List String -> Test -> IntermediateTests
+fromTestV2Helper tag labels test =
     case test of
         Internal.ElmTestVariant__UnitTest thunk ->
             { tests =
                 Regular
                     { unitTests =
-                        [ { labels = labels
+                        [ { tag = tag
+                          , labels = labels
                           , thunk = \() -> thunk () |> toUnitTestExpectation
                           }
                         ]
@@ -236,7 +239,8 @@ fromTestV2Helper labels test =
                 Regular
                     { unitTests = []
                     , fuzzTests =
-                        [ { labels = labels
+                        [ { tag = tag
+                          , labels = labels
                           , thunk = \seed runs notifyRunStarted -> thunk seed runs notifyRunStarted |> toFuzzTestExpectation
                           , runs = maybeRuns
                           }
@@ -246,7 +250,10 @@ fromTestV2Helper labels test =
             }
 
         Internal.ElmTestVariant__Labeled label subTest ->
-            fromTestV2Helper (label :: labels) subTest
+            fromTestV2Helper tag (label :: labels) subTest
+
+        Internal.ElmTestVariant__Tagged newTag subTest ->
+            fromTestV2Helper newTag labels subTest
 
         Internal.ElmTestVariant__Skipped subTest ->
             { tests =
@@ -265,7 +272,7 @@ fromTestV2Helper labels test =
         Internal.ElmTestVariant__Only subTest ->
             let
                 sub =
-                    fromTestV2Helper labels subTest
+                    fromTestV2Helper tag labels subTest
             in
             case sub.tests of
                 Regular tests ->
@@ -282,7 +289,7 @@ fromTestV2Helper labels test =
                     (\subTest acc ->
                         let
                             sub =
-                                fromTestV2Helper labels subTest
+                                fromTestV2Helper tag labels subTest
                         in
                         { tests =
                             case ( acc.tests, sub.tests ) of
@@ -327,6 +334,9 @@ hasOnly test =
             False
 
         Internal.ElmTestVariant__Labeled _ subTest ->
+            hasOnly subTest
+
+        Internal.ElmTestVariant__Tagged _ subTest ->
             hasOnly subTest
 
         Internal.ElmTestVariant__Skipped subTest ->
@@ -547,6 +557,9 @@ distributeSeedsHelp hashed runs seed test =
                 , only = List.map (Labeled description) next.only
                 , skipped = List.map (Labeled description) next.skipped
                 }
+
+        Internal.ElmTestVariant__Tagged _ subTest ->
+            distributeSeedsHelp hashed runs seed subTest
 
         Internal.ElmTestVariant__Skipped subTest ->
             let
