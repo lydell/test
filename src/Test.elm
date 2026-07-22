@@ -161,7 +161,7 @@ test untrimmedDesc thunk =
         Internal.blankDescriptionFailure
 
     else
-        Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest (\() -> thunk ()))
+        Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest thunk)
 
 
 {-| Returns a [`Test`](#Test) that is "TODO" (not yet implemented). These tests
@@ -352,35 +352,7 @@ fuzzWith options fuzzer desc getTest =
             }
 
     else
-        fuzzWithHelp options (Test.Fuzz.fuzzTest options.distribution fuzzer desc getTest)
-
-
-fuzzWithHelp : FuzzOptions a -> Test -> Test
-fuzzWithHelp options aTest =
-    case aTest of
-        Internal.ElmTestVariant__UnitTest _ ->
-            aTest
-
-        Internal.ElmTestVariant__FuzzTest run ->
-            Internal.ElmTestVariant__FuzzTest (\seed _ -> run seed options.runs)
-
-        Internal.ElmTestVariant__Labeled label subTest ->
-            Internal.ElmTestVariant__Labeled label (fuzzWithHelp options subTest)
-
-        Internal.ElmTestVariant__Skipped subTest ->
-            -- It's important to treat skipped tests exactly the same as normal,
-            -- until after seed distribution has completed.
-            fuzzWithHelp options subTest
-                |> Internal.ElmTestVariant__Only
-
-        Internal.ElmTestVariant__Only subTest ->
-            fuzzWithHelp options subTest
-                |> Internal.ElmTestVariant__Only
-
-        Internal.ElmTestVariant__Batch tests ->
-            tests
-                |> List.map (fuzzWithHelp options)
-                |> Internal.ElmTestVariant__Batch
+        Test.Fuzz.fuzzTest (Just options.runs) options.distribution fuzzer desc getTest
 
 
 {-| Take a function that produces a test, and calls it several (usually 100) times, using a randomly-generated input
@@ -412,7 +384,7 @@ fuzz :
     -> (a -> Expectation)
     -> Test
 fuzz =
-    Test.Fuzz.fuzzTest Test.Distribution.Internal.NoDistributionNeeded
+    Test.Fuzz.fuzzTest Nothing Test.Distribution.Internal.NoDistributionNeeded
 
 
 {-| Run a [fuzz test](#fuzz) using two random inputs.

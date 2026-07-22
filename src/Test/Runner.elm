@@ -125,6 +125,243 @@ fromTest runs seed test =
                 |> Only
 
 
+{-| Exposed
+-}
+type alias Tests =
+    { unitTests : List UnitTest
+    , fuzzTests : List FuzzTest
+    , seenSkip : Bool
+    , seenOnly : Bool
+    }
+
+
+{-| Exposed
+-}
+type alias UnitTest =
+    { labels : List String
+    , thunk : () -> UnitTestExpectation
+    }
+
+
+{-| Exposed
+-}
+type alias FuzzTest =
+    { labels : List String
+    , thunk : Random.Seed -> Int -> FuzzTestExpectation
+    , runs : Maybe Int
+    }
+
+
+{-| Exposed, with variants
+-}
+type UnitTestExpectation
+    = UnitTestPass
+    | UnitTestFail
+        { description : String
+        , reason : Reason
+        }
+
+
+{-| Exposed, with variants
+-}
+type FuzzTestExpectation
+    = FuzzTestPass { distributionReport : DistributionReport }
+    | FuzzTestFail
+        { given : Maybe String
+        , description : String
+        , reason : Reason
+        , distributionReport : DistributionReport
+        }
+
+
+type alias IntermediateTests =
+    { tests : MarkedTests
+    , seenSkip : Bool
+    }
+
+
+type MarkedTests
+    = Regular
+        { unitTests : List UnitTest
+        , fuzzTests : List FuzzTest
+        }
+    | Only_
+        { unitTests : List UnitTest
+        , fuzzTests : List FuzzTest
+        }
+
+
+{-| Exposed
+-}
+fromTestV2 : Test -> Tests
+fromTestV2 test =
+    let
+        intermediateTests =
+            fromTestV2Helper [] test
+    in
+    case intermediateTests.tests of
+        Regular tests ->
+            { unitTests = tests.unitTests
+            , fuzzTests = tests.fuzzTests
+            , seenSkip = intermediateTests.seenSkip
+            , seenOnly = False
+            }
+
+        Only_ tests ->
+            { unitTests = tests.unitTests
+            , fuzzTests = tests.fuzzTests
+            , seenSkip = intermediateTests.seenSkip
+            , seenOnly = True
+            }
+
+
+fromTestV2Helper : List String -> Test -> IntermediateTests
+fromTestV2Helper labels test =
+    case test of
+        Internal.ElmTestVariant__UnitTest thunk ->
+            { tests =
+                Regular
+                    { unitTests =
+                        [ { labels = labels
+                          , thunk = \() -> thunk () |> toUnitTestExpectation
+                          }
+                        ]
+                    , fuzzTests = []
+                    }
+            , seenSkip = False
+            }
+
+        Internal.ElmTestVariant__FuzzTest maybeRuns thunk ->
+            { tests =
+                Regular
+                    { unitTests = []
+                    , fuzzTests =
+                        [ { labels = labels
+                          , thunk = \seed runs -> thunk seed runs |> toFuzzTestExpectation
+                          , runs = maybeRuns
+                          }
+                        ]
+                    }
+            , seenSkip = False
+            }
+
+        Internal.ElmTestVariant__Labeled label subTest ->
+            fromTestV2Helper (label :: labels) subTest
+
+        Internal.ElmTestVariant__Skipped subTest ->
+            { tests =
+                (if hasOnly subTest then
+                    Only_
+
+                 else
+                    Regular
+                )
+                    { unitTests = []
+                    , fuzzTests = []
+                    }
+            , seenSkip = True
+            }
+
+        Internal.ElmTestVariant__Only subTest ->
+            let
+                sub =
+                    fromTestV2Helper labels subTest
+            in
+            case sub.tests of
+                Regular tests ->
+                    { tests = Only_ tests
+                    , seenSkip = sub.seenSkip
+                    }
+
+                Only_ _ ->
+                    sub
+
+        Internal.ElmTestVariant__Batch subTests ->
+            subTests
+                |> List.foldl
+                    (\subTest acc ->
+                        let
+                            sub =
+                                fromTestV2Helper labels subTest
+                        in
+                        { tests =
+                            case ( acc.tests, sub.tests ) of
+                                ( Regular a, Regular b ) ->
+                                    Regular
+                                        -- TODO: This is a lot of `++` on larger and larger lists?
+                                        -- Need to optimize?
+                                        { unitTests = a.unitTests ++ b.unitTests
+                                        , fuzzTests = a.fuzzTests ++ b.fuzzTests
+                                        }
+
+                                ( Only_ _, Regular _ ) ->
+                                    acc.tests
+
+                                ( Regular _, Only_ _ ) ->
+                                    sub.tests
+
+                                ( Only_ a, Only_ b ) ->
+                                    Only_
+                                        { unitTests = a.unitTests ++ b.unitTests
+                                        , fuzzTests = a.fuzzTests ++ b.fuzzTests
+                                        }
+                        , seenSkip = acc.seenSkip || sub.seenSkip
+                        }
+                    )
+                    { tests =
+                        Regular
+                            { unitTests = []
+                            , fuzzTests = []
+                            }
+                    , seenSkip = False
+                    }
+
+
+hasOnly : Test -> Bool
+hasOnly test =
+    case test of
+        Internal.ElmTestVariant__UnitTest _ ->
+            False
+
+        Internal.ElmTestVariant__FuzzTest _ _ ->
+            False
+
+        Internal.ElmTestVariant__Labeled _ subTest ->
+            hasOnly subTest
+
+        Internal.ElmTestVariant__Skipped subTest ->
+            hasOnly subTest
+
+        Internal.ElmTestVariant__Only _ ->
+            True
+
+        Internal.ElmTestVariant__Batch subTests ->
+            List.any hasOnly subTests
+
+
+toUnitTestExpectation : Expectation -> UnitTestExpectation
+toUnitTestExpectation expectation =
+    case expectation of
+        Test.Expectation.Pass _ ->
+            UnitTestPass
+
+        Test.Expectation.Fail record ->
+            UnitTestFail
+                { description = record.description
+                , reason = record.reason
+                }
+
+
+toFuzzTestExpectation : Expectation -> FuzzTestExpectation
+toFuzzTestExpectation expectation =
+    case expectation of
+        Test.Expectation.Pass record ->
+            FuzzTestPass record
+
+        Test.Expectation.Fail record ->
+            FuzzTestFail record
+
+
 countAllRunnables : List RunnableTree -> Int
 countAllRunnables =
     List.foldl (countRunnables >> (+)) 0
@@ -247,13 +484,13 @@ distributeSeedsHelp hashed runs seed test =
             , skipped = []
             }
 
-        Internal.ElmTestVariant__FuzzTest aRun ->
+        Internal.ElmTestVariant__FuzzTest maybeRuns aRun ->
             let
                 ( firstSeed, nextSeed ) =
                     Random.step Random.independentSeed seed
             in
             { seed = nextSeed
-            , all = [ Runnable (Thunk (\_ -> aRun firstSeed runs)) ]
+            , all = [ Runnable (Thunk (\_ -> aRun firstSeed (maybeRuns |> Maybe.withDefault runs))) ]
             , only = []
             , skipped = []
             }
