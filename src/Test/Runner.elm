@@ -176,77 +176,39 @@ type FuzzTestExpectation
         }
 
 
-type alias IntermediateTests =
-    { tests : MarkedTests
-    , seenSkip : Bool
-    }
-
-
-type MarkedTests
-    = Regular
-        { unitTests : List UnitTest
-        , fuzzTests : List FuzzTest
-        }
-    | Only_
-        { unitTests : List UnitTest
-        , fuzzTests : List FuzzTest
-        }
-
-
 {-| Exposed
 -}
 fromTestV2 : Test -> Tests
 fromTestV2 test =
-    let
-        intermediateTests =
-            fromTestV2Helper "" [] test
-    in
-    case intermediateTests.tests of
-        Regular tests ->
-            { unitTests = tests.unitTests
-            , fuzzTests = tests.fuzzTests
-            , seenSkip = intermediateTests.seenSkip
-            , seenOnly = False
-            }
-
-        Only_ tests ->
-            { unitTests = tests.unitTests
-            , fuzzTests = tests.fuzzTests
-            , seenSkip = intermediateTests.seenSkip
-            , seenOnly = True
-            }
+    fromTestV2Helper "" [] test
 
 
-fromTestV2Helper : String -> List String -> Test -> IntermediateTests
+fromTestV2Helper : String -> List String -> Test -> Tests
 fromTestV2Helper tag labels test =
     case test of
         Internal.ElmTestVariant__UnitTest thunk ->
-            { tests =
-                Regular
-                    { unitTests =
-                        [ { tag = tag
-                          , labels = labels
-                          , thunk = \() -> thunk () |> toUnitTestExpectation
-                          }
-                        ]
-                    , fuzzTests = []
-                    }
+            { unitTests =
+                [ { tag = tag
+                  , labels = labels
+                  , thunk = \() -> thunk () |> toUnitTestExpectation
+                  }
+                ]
+            , fuzzTests = []
             , seenSkip = False
+            , seenOnly = False
             }
 
         Internal.ElmTestVariant__FuzzTest maybeRuns thunk ->
-            { tests =
-                Regular
-                    { unitTests = []
-                    , fuzzTests =
-                        [ { tag = tag
-                          , labels = labels
-                          , thunk = \seed runs notifyRunStarted -> thunk seed runs notifyRunStarted |> toFuzzTestExpectation
-                          , runs = maybeRuns
-                          }
-                        ]
-                    }
+            { unitTests = []
+            , fuzzTests =
+                [ { tag = tag
+                  , labels = labels
+                  , thunk = \seed runs notifyRunStarted -> thunk seed runs notifyRunStarted |> toFuzzTestExpectation
+                  , runs = maybeRuns
+                  }
+                ]
             , seenSkip = False
+            , seenOnly = False
             }
 
         Internal.ElmTestVariant__Labeled label subTest ->
@@ -256,17 +218,10 @@ fromTestV2Helper tag labels test =
             fromTestV2Helper newTag labels subTest
 
         Internal.ElmTestVariant__Skipped subTest ->
-            { tests =
-                (if hasOnly subTest then
-                    Only_
-
-                 else
-                    Regular
-                )
-                    { unitTests = []
-                    , fuzzTests = []
-                    }
+            { unitTests = []
+            , fuzzTests = []
             , seenSkip = True
+            , seenOnly = hasOnly subTest
             }
 
         Internal.ElmTestVariant__Only subTest ->
@@ -274,14 +229,7 @@ fromTestV2Helper tag labels test =
                 sub =
                     fromTestV2Helper tag labels subTest
             in
-            case sub.tests of
-                Regular tests ->
-                    { tests = Only_ tests
-                    , seenSkip = sub.seenSkip
-                    }
-
-                Only_ _ ->
-                    sub
+            { sub | seenOnly = True }
 
         Internal.ElmTestVariant__Batch subTests ->
             subTests
@@ -290,37 +238,43 @@ fromTestV2Helper tag labels test =
                         let
                             sub =
                                 fromTestV2Helper tag labels subTest
+
+                            seenSkip =
+                                acc.seenSkip || sub.seenSkip
                         in
-                        { tests =
-                            case ( acc.tests, sub.tests ) of
-                                ( Regular a, Regular b ) ->
-                                    Regular
-                                        -- TODO: This is a lot of `++` on larger and larger lists?
-                                        -- Need to optimize?
-                                        { unitTests = a.unitTests ++ b.unitTests
-                                        , fuzzTests = a.fuzzTests ++ b.fuzzTests
-                                        }
+                        case ( acc.seenOnly, sub.seenOnly ) of
+                            ( False, False ) ->
+                                -- TODO: This is a lot of `++` on larger and larger lists?
+                                -- Need to optimize?
+                                { unitTests = acc.unitTests ++ sub.unitTests
+                                , fuzzTests = acc.fuzzTests ++ sub.fuzzTests
+                                , seenSkip = seenSkip
+                                , seenOnly = False
+                                }
 
-                                ( Only_ _, Regular _ ) ->
-                                    acc.tests
+                            ( True, False ) ->
+                                { acc
+                                    | seenSkip = seenSkip
+                                    , seenOnly = True
+                                }
 
-                                ( Regular _, Only_ _ ) ->
-                                    sub.tests
+                            ( False, True ) ->
+                                { sub
+                                    | seenSkip = seenSkip
+                                    , seenOnly = True
+                                }
 
-                                ( Only_ a, Only_ b ) ->
-                                    Only_
-                                        { unitTests = a.unitTests ++ b.unitTests
-                                        , fuzzTests = a.fuzzTests ++ b.fuzzTests
-                                        }
-                        , seenSkip = acc.seenSkip || sub.seenSkip
-                        }
+                            ( True, True ) ->
+                                { unitTests = acc.unitTests ++ sub.unitTests
+                                , fuzzTests = acc.fuzzTests ++ sub.fuzzTests
+                                , seenSkip = seenSkip
+                                , seenOnly = True
+                                }
                     )
-                    { tests =
-                        Regular
-                            { unitTests = []
-                            , fuzzTests = []
-                            }
+                    { unitTests = []
+                    , fuzzTests = []
                     , seenSkip = False
+                    , seenOnly = False
                     }
 
 
