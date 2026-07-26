@@ -2,7 +2,7 @@ module Test.Internal exposing (NotifyRunStarted, Test(..), blankDescriptionFailu
 
 import Random
 import Set exposing (Set)
-import Test.Expectation exposing (Expectation)
+import Test.Expectation exposing (Expectation, FuzzTestExpectation)
 import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
 
 
@@ -15,7 +15,7 @@ For more information, see <https://github.com/elm-explorations/test/pull/153>
 -}
 type Test
     = ElmTestVariant__UnitTest (() -> Expectation)
-    | ElmTestVariant__FuzzTest (Maybe Int) (Random.Seed -> Int -> NotifyRunStarted -> Expectation)
+    | ElmTestVariant__FuzzTest (Maybe Int) (Random.Seed -> Int -> NotifyRunStarted -> FuzzTestExpectation)
     | ElmTestVariant__Labeled String Test
       -- Only constructed (directly from JS) in runners, to associate a tag with tests for caching purposes.
     | ElmTestVariant__Tagged String Test

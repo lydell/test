@@ -1,8 +1,9 @@
 module Test.Expectation exposing
     ( Expectation(..)
+    , FailData
+    , FuzzTestExpectation(..)
     , fail
-    , withDistributionReport
-    , withGiven
+    , fuzzExpectationToExpectation
     )
 
 import Test.Distribution exposing (DistributionReport(..))
@@ -10,8 +11,31 @@ import Test.Runner.Failure exposing (Reason)
 
 
 type Expectation
-    = Pass { distributionReport : DistributionReport }
-    | Fail
+    = -- `Pass` is not supposed to contain anything, but to avoid a breaking change
+      -- we have to be able to store a `DistributionReport` as well.
+      Pass DistributionReport
+    | Fail BreakingChangeWorkaround
+
+
+{-| This is supposed to _only_ contain `FailData`, but to avoid a breaking change
+we have to be able to store data from `FuzzTestFail` as well.
+-}
+type alias BreakingChangeWorkaround =
+    { failData : FailData
+    , given : Maybe String
+    , distributionReport : DistributionReport
+    }
+
+
+type alias FailData =
+    { description : String
+    , reason : Reason
+    }
+
+
+type FuzzTestExpectation
+    = FuzzTestPass { distributionReport : DistributionReport }
+    | FuzzTestFail
         { given : Maybe String
         , description : String
         , reason : Reason
@@ -19,37 +43,33 @@ type Expectation
         }
 
 
-{-| Create a failure without specifying the given.
--}
 fail : { description : String, reason : Reason } -> Expectation
 fail { description, reason } =
     Fail
-        { given = Nothing
-        , description = description
-        , reason = reason
+        { failData =
+            { description = description
+            , reason = reason
+            }
+        , given = Nothing
         , distributionReport = NoDistribution
         }
 
 
-{-| Set the given (fuzz test input) of an expectation.
+{-| Due to backwards compatibility, we are forced to do this type conversion,
+without losing data – see `BreakingChangeWorkaround`.
 -}
-withGiven : String -> Expectation -> Expectation
-withGiven newGiven expectation =
-    case expectation of
-        Fail failure ->
-            Fail { failure | given = Just newGiven }
+fuzzExpectationToExpectation : FuzzTestExpectation -> Expectation
+fuzzExpectationToExpectation fuzzTestExpectation =
+    case fuzzTestExpectation of
+        FuzzTestPass { distributionReport } ->
+            Pass distributionReport
 
-        Pass _ ->
-            expectation
-
-
-{-| Set the distribution report of an expectation.
--}
-withDistributionReport : DistributionReport -> Expectation -> Expectation
-withDistributionReport newDistributionReport expectation =
-    case expectation of
-        Fail failure ->
-            Fail { failure | distributionReport = newDistributionReport }
-
-        Pass pass ->
-            Pass { pass | distributionReport = newDistributionReport }
+        FuzzTestFail record ->
+            Fail
+                { failData =
+                    { description = record.description
+                    , reason = record.reason
+                    }
+                , given = record.given
+                , distributionReport = record.distributionReport
+                }

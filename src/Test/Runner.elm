@@ -53,8 +53,8 @@ import RandomRun exposing (RandomRun)
 import Simplify
 import String
 import Test exposing (Test)
-import Test.Distribution exposing (DistributionReport)
-import Test.Expectation
+import Test.Distribution exposing (DistributionReport(..))
+import Test.Expectation exposing (Expectation(..), FuzzTestExpectation)
 import Test.Internal as Internal
 import Test.Runner.Failure exposing (Reason(..))
 
@@ -140,7 +140,7 @@ type alias Tests =
 type alias UnitTest =
     { tag : String
     , labels : List String
-    , thunk : () -> UnitTestExpectation
+    , thunk : () -> Expectation
     }
 
 
@@ -152,28 +152,6 @@ type alias FuzzTest =
     , thunk : Random.Seed -> Int -> (() -> ()) -> FuzzTestExpectation
     , runs : Maybe Int
     }
-
-
-{-| Exposed, with variants
--}
-type UnitTestExpectation
-    = UnitTestPass
-    | UnitTestFail
-        { description : String
-        , reason : Reason
-        }
-
-
-{-| Exposed, with variants
--}
-type FuzzTestExpectation
-    = FuzzTestPass { distributionReport : DistributionReport }
-    | FuzzTestFail
-        { given : Maybe String
-        , description : String
-        , reason : Reason
-        , distributionReport : DistributionReport
-        }
 
 
 {-| Exposed
@@ -190,7 +168,7 @@ fromTestV2Helper tag labels test =
             { unitTests =
                 [ { tag = tag
                   , labels = labels
-                  , thunk = \() -> thunk () |> toUnitTestExpectation
+                  , thunk = thunk
                   }
                 ]
             , fuzzTests = []
@@ -203,7 +181,7 @@ fromTestV2Helper tag labels test =
             , fuzzTests =
                 [ { tag = tag
                   , labels = labels
-                  , thunk = \seed runs notifyRunStarted -> thunk seed runs notifyRunStarted |> toFuzzTestExpectation
+                  , thunk = thunk
                   , runs = maybeRuns
                   }
                 ]
@@ -301,29 +279,6 @@ hasOnly test =
 
         Internal.ElmTestVariant__Batch subTests ->
             List.any hasOnly subTests
-
-
-toUnitTestExpectation : Expectation -> UnitTestExpectation
-toUnitTestExpectation expectation =
-    case expectation of
-        Test.Expectation.Pass _ ->
-            UnitTestPass
-
-        Test.Expectation.Fail record ->
-            UnitTestFail
-                { description = record.description
-                , reason = record.reason
-                }
-
-
-toFuzzTestExpectation : Expectation -> FuzzTestExpectation
-toFuzzTestExpectation expectation =
-    case expectation of
-        Test.Expectation.Pass record ->
-            FuzzTestPass record
-
-        Test.Expectation.Fail record ->
-            FuzzTestFail record
 
 
 countAllRunnables : List RunnableTree -> Int
@@ -454,7 +409,7 @@ distributeSeedsHelp hashed runs seed test =
                     Random.step Random.independentSeed seed
             in
             { seed = nextSeed
-            , all = [ Runnable (Thunk (\_ -> aRun firstSeed (maybeRuns |> Maybe.withDefault runs) identity)) ]
+            , all = [ Runnable (Thunk (\_ -> aRun firstSeed (maybeRuns |> Maybe.withDefault runs) identity |> Test.Expectation.fuzzExpectationToExpectation)) ]
             , only = []
             , skipped = []
             }
@@ -606,8 +561,8 @@ getFailureReason expectation =
         Test.Expectation.Fail record ->
             Just
                 { given = record.given
-                , description = record.description
-                , reason = record.reason
+                , description = record.failData.description
+                , reason = record.failData.reason
                 }
 
 
@@ -616,8 +571,8 @@ getFailureReason expectation =
 getDistributionReport : Expectation -> DistributionReport
 getDistributionReport expectation =
     case expectation of
-        Test.Expectation.Pass { distributionReport } ->
-            distributionReport
+        Test.Expectation.Pass _ ->
+            NoDistribution
 
         Test.Expectation.Fail { distributionReport } ->
             distributionReport
@@ -632,8 +587,8 @@ isTodo expectation =
         Test.Expectation.Pass _ ->
             False
 
-        Test.Expectation.Fail { reason } ->
-            reason == TODO
+        Test.Expectation.Fail { failData } ->
+            failData.reason == TODO
 
 
 {-| A standard way to format descriptions and test labels, to keep things
@@ -724,24 +679,29 @@ your test.
 -}
 simplify : (a -> Expectation) -> ( a, Simplifiable a ) -> Maybe ( a, Simplifiable a )
 simplify getExpectation ( value, Simplifiable { randomRun, fuzzer } ) =
-    let
-        ( newValue, newRandomRun, _ ) =
-            Simplify.simplify
-                { getExpectation = getExpectation
-                , fuzzer = fuzzer
-                , randomRun = randomRun
-                , value = value
-                , expectation = getExpectation value
-                }
-    in
-    if RandomRun.equal newRandomRun randomRun then
-        Nothing
+    case getExpectation value of
+        Pass _ ->
+            Nothing
 
-    else
-        Just
-            ( newValue
-            , Simplifiable
-                { randomRun = newRandomRun
-                , fuzzer = fuzzer
-                }
-            )
+        Fail { failData } ->
+            let
+                ( newValue, newRandomRun, _ ) =
+                    Simplify.simplify
+                        { getExpectation = getExpectation
+                        , fuzzer = fuzzer
+                        , randomRun = randomRun
+                        , value = value
+                        , failData = failData
+                        }
+            in
+            if RandomRun.equal newRandomRun randomRun then
+                Nothing
+
+            else
+                Just
+                    ( newValue
+                    , Simplifiable
+                        { randomRun = newRandomRun
+                        , fuzzer = fuzzer
+                        }
+                    )
