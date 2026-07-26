@@ -76,7 +76,7 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution fuzzerInts =
                                                 { given = Nothing
                                                 , randomRun = randomRun
                                                 , failData =
-                                                    { description = ""
+                                                    { description = "Your fuzz test passed! To remind you to remove `fuzzReproduce` and re-run again, it is still marked as a failure."
                                                     , reason = Custom
                                                     }
                                                 }
