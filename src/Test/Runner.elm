@@ -140,6 +140,8 @@ type alias Tests =
 type alias UnitTest =
     { tag : String
     , labels : List String
+
+    -- TODO: Convert to a type without backwards compatibility stuff and expose.
     , thunk : () -> Expectation
     }
 
@@ -149,6 +151,8 @@ type alias UnitTest =
 type alias FuzzTest =
     { tag : String
     , labels : List String
+
+    -- TODO: Convert to type that can be exposed.
     , thunk : Random.Seed -> Int -> FuzzTestExpectation
     , runs : Maybe Int
     }

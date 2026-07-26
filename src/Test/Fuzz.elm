@@ -19,10 +19,10 @@ import Test.Runner.Distribution
 import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
 
 
-{-| Reject always-failing tests because of bad names or invalid fuzzers.
+{-| Reject always-failing tests because of bad names.
 -}
-fuzzTest : Maybe Int -> Distribution a -> Fuzzer a -> String -> (a -> Expectation) -> Test
-fuzzTest maybeRuns distribution fuzzer untrimmedDesc getExpectation =
+fuzzTest : Maybe Int -> Distribution a -> List Int -> Fuzzer a -> String -> (a -> Expectation) -> Test
+fuzzTest maybeRuns distribution fuzzerInts fuzzer untrimmedDesc getExpectation =
     let
         desc =
             String.trim untrimmedDesc
@@ -31,13 +31,13 @@ fuzzTest maybeRuns distribution fuzzer untrimmedDesc getExpectation =
         blankDescriptionFailure
 
     else
-        ElmTestVariant__Labeled desc <| validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution
+        ElmTestVariant__Labeled desc <| validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution fuzzerInts
 
 
 {-| Knowing that the fuzz test isn't obviously invalid, run the test and package up the results.
 -}
-validatedFuzzTest : String -> Fuzzer a -> (a -> Expectation) -> Maybe Int -> Distribution a -> Test
-validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
+validatedFuzzTest : String -> Fuzzer a -> (a -> Expectation) -> Maybe Int -> Distribution a -> List Int -> Test
+validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution fuzzerInts =
     ElmTestVariant__FuzzTest
         maybeRuns
         (\seed runs ->
@@ -50,31 +50,65 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
                         desc
             in
             let
-                runResult : RunResult
-                runResult =
-                    fuzzLoop
-                        { fuzzer = fuzzer
-                        , testFn = getExpectation
-                        , initialSeed = seed
-                        , runsNeeded = runs
-                        , distribution = distribution
-                        }
-                        (initLoopState seed distribution)
-            in
-            case runResult.failure of
-                Nothing ->
-                    FuzzTestPass { distributionReport = runResult.distributionReport }
+                { failure, distributionReport } =
+                    if List.isEmpty fuzzerInts then
+                        fuzzLoop
+                            { fuzzer = fuzzer
+                            , testFn = getExpectation
+                            , initialSeed = seed
+                            , runsNeeded = runs
+                            , distribution = distribution
+                            }
+                            (initLoopState seed distribution)
 
-                Just failure ->
+                    else
+                        let
+                            randomRun =
+                                RandomRun.fromList fuzzerInts
+
+                            failure_ : Failure
+                            failure_ =
+                                case Fuzz.Internal.generate (PRNG.hardcoded randomRun) fuzzer of
+                                    Generated { value } ->
+                                        case getExpectation value of
+                                            Pass _ ->
+                                                { given = Nothing
+                                                , randomRun = randomRun
+                                                , failData =
+                                                    { description = ""
+                                                    , reason = Custom
+                                                    }
+                                                }
+
+                                            Fail { failData } ->
+                                                { given = Just <| Test.Internal.toString value
+                                                , randomRun = randomRun
+                                                , failData = failData
+                                                }
+
+                                    Rejected { reason } ->
+                                        invalidFuzzerFailure reason
+                        in
+                        { failure = Just failure_
+
+                        -- In this mode we can't do a distribution report, because we ran just once.
+                        , distributionReport = NoDistribution
+                        }
+            in
+            case failure of
+                Nothing ->
+                    FuzzTestPass { distributionReport = distributionReport }
+
+                Just failure_ ->
                     FuzzTestFail
-                        { given = failure.given
-                        , randomRun = failure.randomRun
-                        , description = failure.failData.description
-                        , reason = failure.failData.reason
-                        , distributionReport = runResult.distributionReport
+                        { given = failure_.given
+                        , randomRun = RandomRun.toList failure_.randomRun
+                        , description = failure_.failData.description
+                        , reason = failure_.failData.reason
+                        , distributionReport = distributionReport
                         , rerunFailure =
                             \() ->
-                                case Fuzz.Internal.generate (PRNG.hardcoded failure.randomRun) fuzzer of
+                                case Fuzz.Internal.generate (PRNG.hardcoded failure_.randomRun) fuzzer of
                                     Generated { value } ->
                                         getExpectation value
                                             |> (\_ -> ())
@@ -459,6 +493,17 @@ distributionInsufficientFailure failure =
     }
 
 
+invalidFuzzerFailure : String -> Failure
+invalidFuzzerFailure description =
+    { given = Nothing
+    , randomRun = RandomRun.empty
+    , failData =
+        { description = description
+        , reason = Invalid InvalidFuzzer
+        }
+    }
+
+
 {-| Short-circuits on failure.
 -}
 runNTimes : Int -> LoopConstants a -> LoopState -> LoopState
@@ -500,14 +545,7 @@ runOnce c state =
         ( maybeFailure, newDistributionCounter ) =
             case genResult of
                 Rejected { reason } ->
-                    ( Just
-                        { given = Nothing
-                        , randomRun = RandomRun.empty
-                        , failData =
-                            { description = reason
-                            , reason = Invalid InvalidFuzzer
-                            }
-                        }
+                    ( Just (invalidFuzzerFailure reason)
                     , state.distributionCount
                     )
 

@@ -38,7 +38,7 @@ type FuzzTestExpectation
     = FuzzTestPass { distributionReport : DistributionReport }
     | FuzzTestFail
         { given : Maybe String
-        , randomRun : RandomRun
+        , randomRun : List Int
         , description : String
         , reason : Reason
         , distributionReport : DistributionReport

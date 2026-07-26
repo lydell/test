@@ -1,6 +1,7 @@
 module Test.Internal exposing (Test(..), blankDescriptionFailure, duplicatedName, failNow, toString)
 
 import Random
+import RandomRun exposing (RandomRun)
 import Set exposing (Set)
 import Test.Expectation exposing (Expectation, FuzzTestExpectation)
 import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
