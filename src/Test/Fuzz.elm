@@ -40,7 +40,7 @@ validatedFuzzTest : String -> Fuzzer a -> (a -> Expectation) -> Maybe Int -> Dis
 validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
     ElmTestVariant__FuzzTest
         maybeRuns
-        (\seed runs notifyRunStarted ->
+        (\seed runs ->
             let
                 _ =
                     if DebugConfig.shouldLogFuzzTests then
@@ -54,7 +54,7 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
                 runResult =
                     fuzzLoop
                         { fuzzer = fuzzer
-                        , testFn = \a -> notifyRunStarted () |> (\() -> getExpectation a)
+                        , testFn = getExpectation
                         , initialSeed = seed
                         , runsNeeded = runs
                         , distribution = distribution

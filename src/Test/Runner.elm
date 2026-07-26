@@ -149,7 +149,7 @@ type alias UnitTest =
 type alias FuzzTest =
     { tag : String
     , labels : List String
-    , thunk : Random.Seed -> Int -> (() -> ()) -> FuzzTestExpectation
+    , thunk : Random.Seed -> Int -> FuzzTestExpectation
     , runs : Maybe Int
     }
 
@@ -409,7 +409,7 @@ distributeSeedsHelp hashed runs seed test =
                     Random.step Random.independentSeed seed
             in
             { seed = nextSeed
-            , all = [ Runnable (Thunk (\_ -> aRun firstSeed (maybeRuns |> Maybe.withDefault runs) identity |> Test.Expectation.fuzzExpectationToExpectation)) ]
+            , all = [ Runnable (Thunk (\_ -> aRun firstSeed (maybeRuns |> Maybe.withDefault runs) |> Test.Expectation.fuzzExpectationToExpectation)) ]
             , only = []
             , skipped = []
             }

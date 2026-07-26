@@ -1,4 +1,4 @@
-module Test.Internal exposing (NotifyRunStarted, Test(..), blankDescriptionFailure, duplicatedName, failNow, toString)
+module Test.Internal exposing (Test(..), blankDescriptionFailure, duplicatedName, failNow, toString)
 
 import Random
 import Set exposing (Set)
@@ -15,21 +15,13 @@ For more information, see <https://github.com/elm-explorations/test/pull/153>
 -}
 type Test
     = ElmTestVariant__UnitTest (() -> Expectation)
-    | ElmTestVariant__FuzzTest (Maybe Int) (Random.Seed -> Int -> NotifyRunStarted -> FuzzTestExpectation)
+    | ElmTestVariant__FuzzTest (Maybe Int) (Random.Seed -> Int -> FuzzTestExpectation)
     | ElmTestVariant__Labeled String Test
       -- Only constructed (directly from JS) in runners, to associate a tag with tests for caching purposes.
     | ElmTestVariant__Tagged String Test
     | ElmTestVariant__Skipped Test
     | ElmTestVariant__Only Test
     | ElmTestVariant__Batch (List Test)
-
-
-{-| This looks like a useless function, but the idea is that
-runners pass a patched function with side effects. The
-intended usage is to capture `Debug.log` calls per run.
--}
-type alias NotifyRunStarted =
-    () -> ()
 
 
 {-| Create a test that always fails for the given reason and description.
