@@ -6,6 +6,7 @@ module Test.Expectation exposing
     , fuzzExpectationToExpectation
     )
 
+import RandomRun exposing (RandomRun)
 import Test.Distribution exposing (DistributionReport(..))
 import Test.Runner.Failure exposing (Reason)
 
@@ -37,9 +38,18 @@ type FuzzTestExpectation
     = FuzzTestPass { distributionReport : DistributionReport }
     | FuzzTestFail
         { given : Maybe String
+        , randomRun : RandomRun
         , description : String
         , reason : Reason
         , distributionReport : DistributionReport
+
+        -- This function runs the fuzzer and the fuzz test again,
+        -- with the input that caused this specific failure,
+        -- and throws away the result. The idea is that runners
+        -- can call this function to capture `Debug.log`s only
+        -- from the execution that caused the failure, drastically
+        -- reducing noise.
+        , rerunFailure : () -> ()
         }
 
 

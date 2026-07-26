@@ -9,6 +9,7 @@ import MicroListExtra as List
 import MicroMaybeExtra as Maybe
 import PRNG
 import Random
+import RandomRun exposing (RandomRun)
 import Simplify
 import Test.Distribution exposing (DistributionReport(..))
 import Test.Distribution.Internal exposing (Distribution(..), ExpectedDistribution(..))
@@ -67,15 +68,26 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
                 Just failure ->
                     FuzzTestFail
                         { given = failure.given
+                        , randomRun = failure.randomRun
                         , description = failure.failData.description
                         , reason = failure.failData.reason
                         , distributionReport = runResult.distributionReport
+                        , rerunFailure =
+                            \() ->
+                                case Fuzz.Internal.generate (PRNG.hardcoded failure.randomRun) fuzzer of
+                                    Generated { value } ->
+                                        getExpectation value
+                                            |> (\_ -> ())
+
+                                    Rejected _ ->
+                                        ()
                         }
         )
 
 
 type alias Failure =
     { given : Maybe String
+    , randomRun : RandomRun
     , failData : FailData
     }
 
@@ -418,6 +430,7 @@ distributionBugRunResult =
     , failure =
         Just
             { given = Nothing
+            , randomRun = RandomRun.empty
             , failData =
                 { description = "elm-test distribution collection bug"
                 , reason = Invalid DistributionBug
@@ -429,6 +442,7 @@ distributionBugRunResult =
 distributionInsufficientFailure : DistributionFailure -> Failure
 distributionInsufficientFailure failure =
     { given = Nothing
+    , randomRun = RandomRun.empty
     , failData =
         { description =
             """Distribution of label "{LABEL}" was insufficient:
@@ -488,6 +502,7 @@ runOnce c state =
                 Rejected { reason } ->
                     ( Just
                         { given = Nothing
+                        , randomRun = RandomRun.empty
                         , failData =
                             { description = reason
                             , reason = Invalid InvalidFuzzer
@@ -598,9 +613,10 @@ stepSeed seed =
 findSimplestFailure : Simplify.State a -> Failure
 findSimplestFailure state =
     let
-        ( simplestValue, _, failData ) =
+        ( simplestValue, randomRun, failData ) =
             Simplify.simplify state
     in
     { given = Just <| Test.Internal.toString simplestValue
+    , randomRun = randomRun
     , failData = failData
     }
