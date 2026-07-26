@@ -170,7 +170,7 @@ type FuzzTestExpectation
     = FuzzTestPass { distributionReport : DistributionReport }
     | FuzzTestFail
         { given : Maybe String
-        , randomRun : List Int
+        , fuzzerInts : List Int
         , description : String
         , reason : Reason
         , distributionReport : DistributionReport
@@ -322,7 +322,7 @@ toFuzzTestExpectation expectation =
         Test.Expectation.FuzzTestFail data ->
             FuzzTestFail
                 { given = data.given
-                , randomRun = RandomRun.toList data.randomRun
+                , fuzzerInts = RandomRun.toList data.randomRun
                 , description = data.description
                 , reason = data.reason
                 , distributionReport = data.distributionReport
