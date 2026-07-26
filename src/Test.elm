@@ -1,7 +1,7 @@
 module Test exposing
     ( Test, test
     , describe, concat, todo, skip, only
-    , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
+    , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions, fuzzReproduce
     , Distribution, noDistribution, reportDistribution, expectDistribution
     )
 
@@ -17,7 +17,7 @@ module Test exposing
 
 ## Fuzz Testing
 
-@docs fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
+@docs fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions, fuzzReproduce
 @docs Distribution, noDistribution, reportDistribution, expectDistribution
 
 -}
