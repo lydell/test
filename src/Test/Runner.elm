@@ -54,7 +54,7 @@ import Simplify
 import String
 import Test exposing (Test)
 import Test.Distribution exposing (DistributionReport(..))
-import Test.Expectation exposing (Expectation(..), FuzzTestExpectation)
+import Test.Expectation exposing (Expectation(..))
 import Test.Internal as Internal
 import Test.Runner.Failure exposing (Reason(..))
 
@@ -140,9 +140,7 @@ type alias Tests =
 type alias UnitTest =
     { tag : String
     , labels : List String
-
-    -- TODO: Convert to a type without backwards compatibility stuff and expose.
-    , thunk : () -> Expectation
+    , thunk : () -> UnitTestExpectation
     }
 
 
@@ -151,11 +149,33 @@ type alias UnitTest =
 type alias FuzzTest =
     { tag : String
     , labels : List String
-
-    -- TODO: Convert to type that can be exposed.
     , thunk : Random.Seed -> Int -> FuzzTestExpectation
     , runs : Maybe Int
     }
+
+
+{-| Exposed
+-}
+type UnitTestExpectation
+    = UnitTestPass
+    | UnitTestFail
+        { description : String
+        , reason : Reason
+        }
+
+
+{-| Exposed
+-}
+type FuzzTestExpectation
+    = FuzzTestPass { distributionReport : DistributionReport }
+    | FuzzTestFail
+        { given : Maybe String
+        , randomRun : List Int
+        , description : String
+        , reason : Reason
+        , distributionReport : DistributionReport
+        , rerunFailure : () -> ()
+        }
 
 
 {-| Exposed
@@ -172,7 +192,7 @@ fromTestV2Helper tag labels test =
             { unitTests =
                 [ { tag = tag
                   , labels = labels
-                  , thunk = thunk
+                  , thunk = \() -> thunk () |> toUnitTestExpectation
                   }
                 ]
             , fuzzTests = []
@@ -185,7 +205,7 @@ fromTestV2Helper tag labels test =
             , fuzzTests =
                 [ { tag = tag
                   , labels = labels
-                  , thunk = thunk
+                  , thunk = \seed runs -> thunk seed runs |> toFuzzTestExpectation
                   , runs = maybeRuns
                   }
                 ]
@@ -283,6 +303,33 @@ hasOnly test =
 
         Internal.ElmTestVariant__Batch subTests ->
             List.any hasOnly subTests
+
+
+toUnitTestExpectation : Expectation -> UnitTestExpectation
+toUnitTestExpectation expectation =
+    case expectation of
+        Pass _ ->
+            UnitTestPass
+
+        Fail { failData } ->
+            UnitTestFail failData
+
+
+toFuzzTestExpectation : Test.Expectation.FuzzTestExpectation -> FuzzTestExpectation
+toFuzzTestExpectation expectation =
+    case expectation of
+        Test.Expectation.FuzzTestPass data ->
+            FuzzTestPass data
+
+        Test.Expectation.FuzzTestFail data ->
+            FuzzTestFail
+                { given = data.given
+                , randomRun = RandomRun.toList data.randomRun
+                , description = data.description
+                , reason = data.reason
+                , distributionReport = data.distributionReport
+                , rerunFailure = data.rerunFailure
+                }
 
 
 countAllRunnables : List RunnableTree -> Int
@@ -559,10 +606,10 @@ getFailureReason :
             }
 getFailureReason expectation =
     case expectation of
-        Test.Expectation.Pass _ ->
+        Pass _ ->
             Nothing
 
-        Test.Expectation.Fail record ->
+        Fail record ->
             Just
                 { given = record.given
                 , description = record.failData.description
@@ -575,10 +622,10 @@ getFailureReason expectation =
 getDistributionReport : Expectation -> DistributionReport
 getDistributionReport expectation =
     case expectation of
-        Test.Expectation.Pass _ ->
+        Pass _ ->
             NoDistribution
 
-        Test.Expectation.Fail { distributionReport } ->
+        Fail { distributionReport } ->
             distributionReport
 
 
@@ -588,10 +635,10 @@ may treat these tests differently in their output.
 isTodo : Expectation -> Bool
 isTodo expectation =
     case expectation of
-        Test.Expectation.Pass _ ->
+        Pass _ ->
             False
 
-        Test.Expectation.Fail { failData } ->
+        Fail { failData } ->
             failData.reason == TODO
 
 

@@ -62,6 +62,7 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution fuzzerInts =
                             (initLoopState seed distribution)
 
                     else
+                        -- Reproduce a previous failure - see `Test.fuzzReproduce`.
                         let
                             randomRun =
                                 RandomRun.fromList fuzzerInts
@@ -102,7 +103,7 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution fuzzerInts =
                 Just failure_ ->
                     FuzzTestFail
                         { given = failure_.given
-                        , randomRun = RandomRun.toList failure_.randomRun
+                        , randomRun = failure_.randomRun
                         , description = failure_.failData.description
                         , reason = failure_.failData.reason
                         , distributionReport = distributionReport
