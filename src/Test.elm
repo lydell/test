@@ -364,11 +364,16 @@ the failure faster, because it does not need to go through, say, 50 runs before 
 and then spend time on simplifying the fuzzed data. It goes straight to the simplified
 fuzzed data and runs your test just once.
 
-Note that there is no `fuzzWithFoo2`, but you can always pass more fuzz values in
+Note that there is no `fuzzReproduce2`, but you can always pass more fuzz values in
 using [`Fuzz.pair`](Fuzz#pair), [`Fuzz.triple`](Fuzz#triple) – see `fuzzWith` for an example.
+(Also, there is no `fuzzReproduceWith` because none of the `FuzzOptions` make sense when
+running the fuzz test just once to reproduce an error.)
 
 The idea is that you temporarily switch from `fuzz`, `fuzz2`, `fuzz3` or `fuzzWith` to
 `fuzzReproduce`, debug the failure, fix it, and then revert back again.
+
+When the test succeeds, it will still be marked as a failure, to remind you to remove
+`fuzzReproduce` and run the tests again.
 
 -}
 fuzzReproduce : List Int -> Fuzzer a -> String -> (a -> Expectation) -> Test
