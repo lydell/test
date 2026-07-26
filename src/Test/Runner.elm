@@ -180,6 +180,13 @@ type FuzzTestExpectation
 
 {-| Exposed
 -}
+tagTest : String -> Test -> Test
+tagTest =
+    Internal.ElmTestVariant__Tagged
+
+
+{-| Exposed
+-}
 fromTestV2 : Test -> Tests
 fromTestV2 test =
     fromTestV2Helper "" [] test
