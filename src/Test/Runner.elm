@@ -246,8 +246,6 @@ fromTestV2Helper tag labels test =
                         in
                         case ( acc.seenOnly, sub.seenOnly ) of
                             ( False, False ) ->
-                                -- TODO: This is a lot of `++` on larger and larger lists?
-                                -- Need to optimize?
                                 { unitTests = acc.unitTests ++ sub.unitTests
                                 , fuzzTests = acc.fuzzTests ++ sub.fuzzTests
                                 , seenSkip = seenSkip
