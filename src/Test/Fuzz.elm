@@ -48,53 +48,52 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
 
                     else
                         desc
+
+                runFuzzLoop () =
+                    fuzzLoop
+                        { fuzzer = fuzzer
+                        , testFn = getExpectation
+                        , initialSeed = seed
+                        , runsNeeded = runs
+                        , distribution = distribution
+                        }
+                        (initLoopState seed distribution)
             in
             let
                 { failure, distributionReport } =
                     if List.isEmpty fuzzerInts then
-                        fuzzLoop
-                            { fuzzer = fuzzer
-                            , testFn = getExpectation
-                            , initialSeed = seed
-                            , runsNeeded = runs
-                            , distribution = distribution
-                            }
-                            (initLoopState seed distribution)
+                        runFuzzLoop ()
 
                     else
-                        -- Reproduce a previous failure - see `Test.fuzzReproduce`.
+                        -- Reproduce a previous failure.
                         let
                             randomRun =
                                 RandomRun.fromList fuzzerInts
+                        in
+                        case Fuzz.Internal.generate (PRNG.hardcoded randomRun) fuzzer of
+                            Generated { value } ->
+                                case getExpectation value of
+                                    Pass _ ->
+                                        -- The saved `RandomRun` now passes – continue with
+                                        -- a regular fuzz run.
+                                        runFuzzLoop ()
 
-                            failure_ : Failure
-                            failure_ =
-                                case Fuzz.Internal.generate (PRNG.hardcoded randomRun) fuzzer of
-                                    Generated { value } ->
-                                        case getExpectation value of
-                                            Pass _ ->
-                                                { given = Nothing
-                                                , randomRun = randomRun
-                                                , failData =
-                                                    { description = "Your fuzz test passed! To remind you to remove `fuzzReproduce` and re-run again, it is still marked as a failure."
-                                                    , reason = Custom
-                                                    }
-                                                }
-
-                                            Fail { failData } ->
+                                    Fail { failData } ->
+                                        { failure =
+                                            Just
                                                 { given = Just <| Test.Internal.toString value
                                                 , randomRun = randomRun
                                                 , failData = failData
                                                 }
 
-                                    Rejected { reason } ->
-                                        invalidFuzzerFailure reason
-                        in
-                        { failure = Just failure_
+                                        -- In this mode we can't do a distribution report, because we ran just once.
+                                        , distributionReport = NoDistribution
+                                        }
 
-                        -- In this mode we can't do a distribution report, because we ran just once.
-                        , distributionReport = NoDistribution
-                        }
+                            Rejected _ ->
+                                -- If the code of the test has changed, a saved `RandomRun` might
+                                -- not be usable anymore. If so, just ignore it and start a regular run.
+                                runFuzzLoop ()
             in
             case failure of
                 Nothing ->
@@ -494,17 +493,6 @@ distributionInsufficientFailure failure =
     }
 
 
-invalidFuzzerFailure : String -> Failure
-invalidFuzzerFailure description =
-    { given = Nothing
-    , randomRun = RandomRun.empty
-    , failData =
-        { description = description
-        , reason = Invalid InvalidFuzzer
-        }
-    }
-
-
 {-| Short-circuits on failure.
 -}
 runNTimes : Int -> LoopConstants a -> LoopState -> LoopState
@@ -546,7 +534,14 @@ runOnce c state =
         ( maybeFailure, newDistributionCounter ) =
             case genResult of
                 Rejected { reason } ->
-                    ( Just (invalidFuzzerFailure reason)
+                    ( Just
+                        { given = Nothing
+                        , randomRun = RandomRun.empty
+                        , failData =
+                            { description = reason
+                            , reason = Invalid InvalidFuzzer
+                            }
+                        }
                     , state.distributionCount
                     )
 
