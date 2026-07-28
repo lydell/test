@@ -1,13 +1,13 @@
 module Test exposing
-    ( Test, test
+    ( Test, test, parametrized
     , describe, concat, todo, skip, only
-    , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
+    , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions, fuzzWithExamples
     , Distribution, noDistribution, reportDistribution, expectDistribution
     )
 
 {-| A module containing functions for creating and managing tests.
 
-@docs Test, test
+@docs Test, test, parametrized
 
 
 ## Organizing Tests
@@ -17,7 +17,7 @@ module Test exposing
 
 ## Fuzz Testing
 
-@docs fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
+@docs fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions, fuzzWithExamples
 @docs Distribution, noDistribution, reportDistribution, expectDistribution
 
 -}
@@ -162,6 +162,36 @@ test untrimmedDesc thunk =
 
     else
         Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest thunk)
+
+
+{-| Runs a single test many times with a list of given inputs.
+
+    import Expect
+    import Test exposing (parametrized)
+
+
+    parametrized
+        [ ( "negative", { input = -1, expected = LT } )
+        , ( "zero", { input = 0, expected = EQ } )
+        , ( "positive", { input = 1, expected = GT } )
+        ]
+        "compare with zero"
+    <|
+        \{ input, expected } ->
+            compare input 0
+                |> Expect.equal expected
+
+The strings in the tuples are used as labels to make it easier to tell which test failed.
+The values in the tuples can be anything you like. In this example we used records to
+easily specify the input value the the expected outcome.
+
+If you are looking for this but for a fuzz test, see [fuzzWithExamples](#fuzzWithExamples).
+
+-}
+parametrized : List ( String, a ) -> String -> (a -> Expectation) -> Test
+parametrized cases desc thunk =
+    describe desc
+        (List.map (\( name, value ) -> test name (\() -> thunk value)) cases)
 
 
 {-| Returns a [`Test`](#Test) that is "TODO" (not yet implemented). These tests
@@ -353,6 +383,58 @@ fuzzWith options fuzzer desc getTest =
 
     else
         Test.Fuzz.fuzzTest (Just options.runs) options.distribution fuzzer desc getTest
+
+
+{-| This is the combination of [fuzzWith](#fuzzWith) and [parametrized](#parametrized).
+
+In addition to running the fuzz test, run the same test with a few hardcoded examples.
+When the fuzz test fails, you might want to add that case to the examples as a regression test.
+That specific input might never be picked randomly again!
+
+    import Expect
+    import Fuzz exposing (float)
+    import Test exposing (fuzzWithExamples, noDistribution)
+
+
+    fuzzWithExamples { runs = 100, distribution = noDistribution }
+        float
+        [ ( "NaN", 0 / 0 )
+        , ( "Infinity", 1 / 0 )
+        ]
+        "compare with zero is only EQ when input also is zero"
+    <|
+        \input ->
+            let
+                expect =
+                    if input == 0 && input == input then
+                        Expect.equal
+
+                    else
+                        Expect.notEqual
+            in
+            compare input 0
+                |> expect EQ
+
+-}
+fuzzWithExamples : FuzzOptions a -> Fuzzer a -> List ( String, a ) -> String -> (a -> Expectation) -> Test
+fuzzWithExamples options fuzzer examples desc getTest =
+    let
+        labels =
+            List.map Tuple.first examples |> Set.fromList
+
+        -- Just in case the examples are `[ ( "fuzz", a ), ( "fuzz_", b ) ]`.
+        -- Sibling tests can’t have the same label.
+        fuzzLabel label =
+            if Set.member label labels then
+                fuzzLabel (label ++ "_")
+
+            else
+                label
+    in
+    describe desc
+        (List.map (\( name, value ) -> test name (\() -> getTest value)) examples
+            ++ [ fuzzWith options fuzzer (fuzzLabel "fuzz") getTest ]
+        )
 
 
 {-| Take a function that produces a test, and calls it several (usually 100) times, using a randomly-generated input
