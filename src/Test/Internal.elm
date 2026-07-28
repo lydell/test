@@ -16,7 +16,7 @@ For more information, see <https://github.com/elm-explorations/test/pull/153>
 -}
 type Test
     = ElmTestVariant__UnitTest (() -> Expectation)
-    | ElmTestVariant__FuzzTest (Maybe Int) (Random.Seed -> Int -> FuzzTestExpectation)
+    | ElmTestVariant__FuzzTest (Maybe Int) (Random.Seed -> Int -> List Int -> FuzzTestExpectation)
     | ElmTestVariant__Labeled String Test
     | ElmTestVariant__Tagged String Test
     | ElmTestVariant__Skipped Test

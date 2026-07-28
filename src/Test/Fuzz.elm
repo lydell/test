@@ -21,8 +21,8 @@ import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
 
 {-| Reject always-failing tests because of bad names.
 -}
-fuzzTest : Maybe Int -> Distribution a -> List Int -> Fuzzer a -> String -> (a -> Expectation) -> Test
-fuzzTest maybeRuns distribution fuzzerInts fuzzer untrimmedDesc getExpectation =
+fuzzTest : Maybe Int -> Distribution a -> Fuzzer a -> String -> (a -> Expectation) -> Test
+fuzzTest maybeRuns distribution fuzzer untrimmedDesc getExpectation =
     let
         desc =
             String.trim untrimmedDesc
@@ -31,16 +31,16 @@ fuzzTest maybeRuns distribution fuzzerInts fuzzer untrimmedDesc getExpectation =
         blankDescriptionFailure
 
     else
-        ElmTestVariant__Labeled desc <| validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution fuzzerInts
+        ElmTestVariant__Labeled desc <| validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution
 
 
 {-| Knowing that the fuzz test isn't obviously invalid, run the test and package up the results.
 -}
-validatedFuzzTest : String -> Fuzzer a -> (a -> Expectation) -> Maybe Int -> Distribution a -> List Int -> Test
-validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution fuzzerInts =
+validatedFuzzTest : String -> Fuzzer a -> (a -> Expectation) -> Maybe Int -> Distribution a -> Test
+validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
     ElmTestVariant__FuzzTest
         maybeRuns
-        (\seed runs ->
+        (\seed runs fuzzerInts ->
             let
                 _ =
                     if DebugConfig.shouldLogFuzzTests then

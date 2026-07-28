@@ -1,7 +1,7 @@
 module Test exposing
     ( Test, test
     , describe, concat, todo, skip, only
-    , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions, fuzzReproduce
+    , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
     , Distribution, noDistribution, reportDistribution, expectDistribution
     )
 
@@ -17,7 +17,7 @@ module Test exposing
 
 ## Fuzz Testing
 
-@docs fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions, fuzzReproduce
+@docs fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
 @docs Distribution, noDistribution, reportDistribution, expectDistribution
 
 -}
@@ -352,40 +352,7 @@ fuzzWith options fuzzer desc getTest =
             }
 
     else
-        Test.Fuzz.fuzzTest (Just options.runs) options.distribution [] fuzzer desc getTest
-
-
-{-| Reproduce a previous [`fuzz`](#fuzz) test.
-
-When a fuzz test fails, it prints a list of numbers that you can pass to this function
-to reproduce that failure. The usual way of reproducing fuzz test failures is by running
-the tests again with the same seed. That works, but using `fuzzReproduce` gets you to
-the failure faster, because it does not need to go through, say, 50 runs before failing,
-and then spend time on simplifying the fuzzed data. It goes straight to the simplified
-fuzzed data and runs your test just once.
-
-Note that there is no `fuzzReproduce2`, but you can always pass more fuzz values in
-using [`Fuzz.pair`](Fuzz#pair), [`Fuzz.triple`](Fuzz#triple) – see `fuzzWith` for an example.
-(Also, there is no `fuzzReproduceWith` because none of the `FuzzOptions` make sense when
-running the fuzz test just once to reproduce an error.)
-
-The idea is that you temporarily switch from `fuzz`, `fuzz2`, `fuzz3` or `fuzzWith` to
-`fuzzReproduce`, debug the failure, fix it, and then revert back again.
-
-When the test succeeds, it will still be marked as a failure, to remind you to remove
-`fuzzReproduce` and run the tests again.
-
--}
-fuzzReproduce : List Int -> Fuzzer a -> String -> (a -> Expectation) -> Test
-fuzzReproduce fuzzerInts fuzzer desc getTest =
-    if List.isEmpty fuzzerInts then
-        Internal.failNow
-            { description = "fuzzReproduce cannot take an empty list of fuzz numbers."
-            , reason = Invalid EmptyList
-            }
-
-    else
-        Test.Fuzz.fuzzTest Nothing Test.Distribution.Internal.NoDistributionNeeded fuzzerInts fuzzer desc getTest
+        Test.Fuzz.fuzzTest (Just options.runs) options.distribution fuzzer desc getTest
 
 
 {-| Take a function that produces a test, and calls it several (usually 100) times, using a randomly-generated input
@@ -417,7 +384,7 @@ fuzz :
     -> (a -> Expectation)
     -> Test
 fuzz =
-    Test.Fuzz.fuzzTest Nothing Test.Distribution.Internal.NoDistributionNeeded []
+    Test.Fuzz.fuzzTest Nothing Test.Distribution.Internal.NoDistributionNeeded
 
 
 {-| Run a [fuzz test](#fuzz) using two random inputs.
