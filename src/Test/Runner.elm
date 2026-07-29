@@ -1,5 +1,6 @@
 module Test.Runner exposing
     ( Runner, SeededRunners(..), fromTest
+    , toTests, Tests, UnitTest, FuzzTest, UnitTestExpectation(..), FuzzTestExpectation(..), tagTest
     , getFailureReason, isTodo
     , getDistributionReport
     , formatLabels
@@ -15,6 +16,11 @@ can be found in the `README`.
 ## Runner
 
 @docs Runner, SeededRunners, fromTest
+
+
+## To tests
+
+@docs toTests, Tests, UnitTest, FuzzTest, UnitTestExpectation, FuzzTestExpectation, tagTest
 
 
 ## Expectations
@@ -91,6 +97,8 @@ type RunnableTree
 
 {-| Convert a `Test` into `SeededRunners`.
 
+Deprecated! Use [toTests](#toTests) instead.
+
 In order to run any fuzz tests that the `Test` may have, it requires a default run count as well
 as an initial `Random.Seed`. `100` is a good run count. To obtain a good random seed, pass a
 random 32-bit integer to `Random.initialSeed`. You can obtain such an integer by running
@@ -125,7 +133,7 @@ fromTest runs seed test =
                 |> Only
 
 
-{-| Exposed
+{-| TODO: Docs.
 -}
 type alias Tests =
     { unitTests : List UnitTest
@@ -135,7 +143,7 @@ type alias Tests =
     }
 
 
-{-| Exposed
+{-| TODO: Docs.
 -}
 type alias UnitTest =
     { tag : String
@@ -144,7 +152,7 @@ type alias UnitTest =
     }
 
 
-{-| Exposed
+{-| TODO: Docs.
 -}
 type alias FuzzTest =
     { tag : String
@@ -154,7 +162,7 @@ type alias FuzzTest =
     }
 
 
-{-| Exposed
+{-| TODO: Docs.
 -}
 type UnitTestExpectation
     = UnitTestPass
@@ -164,7 +172,7 @@ type UnitTestExpectation
         }
 
 
-{-| Exposed
+{-| TODO: Docs.
 -}
 type FuzzTestExpectation
     = FuzzTestPass { distributionReport : DistributionReport }
@@ -178,17 +186,20 @@ type FuzzTestExpectation
         }
 
 
-{-| Exposed
+{-| TODO: Docs.
 -}
 tagTest : String -> Test -> Test
 tagTest =
     Internal.ElmTestVariant__Tagged
 
 
-{-| Exposed
+{-| TODO: Docs.
+
+This replaces the deprecated [fromTest](#fromTest) function.
+
 -}
-fromTestV2 : Test -> Tests
-fromTestV2 test =
+toTests : Test -> Tests
+toTests test =
     fromTestV2Helper "" [] test
 
 
