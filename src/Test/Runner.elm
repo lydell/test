@@ -13,22 +13,22 @@ the browser, which is implemented using this interface. A list of these runners
 can be found in the `README`.
 
 
-## Runner
+## Runner (deprecated)
 
 @docs Runner, SeededRunners, fromTest
 
 
-## To tests
+## Consume tests
 
 @docs toTests, Tests, UnitTest, FuzzTest, UnitTestExpectation, FuzzTestExpectation, tagTest
 
 
-## Expectations
+## Expectations (deprecated)
 
 @docs getFailureReason, isTodo
 
 
-## Distribution
+## Distribution (deprecated)
 
 @docs getDistributionReport
 
@@ -74,6 +74,9 @@ type Runnable
 {-| A function which, when evaluated, produces a list of expectations. Also a
 list of labels which apply to this outcome.
 
+**@deprecated** Use [UnitTest](#UnitTest) and [FuzzTest](#FuzzTest) from
+[toTests](#toTests) instead.
+
 NOTE: Even though a list is returned, that list only ever contains exactly one
 expectation. Changing it to return just `Expectation` would be a breaking change.
 
@@ -97,7 +100,7 @@ type RunnableTree
 
 {-| Convert a `Test` into `SeededRunners`.
 
-Deprecated! Use [toTests](#toTests) instead.
+**@deprecated** Use [toTests](#toTests) instead.
 
 In order to run any fuzz tests that the `Test` may have, it requires a default run count as well
 as an initial `Random.Seed`. `100` is a good run count. To obtain a good random seed, pass a
@@ -133,7 +136,15 @@ fromTest runs seed test =
                 |> Only
 
 
-{-| TODO: Docs.
+{-| The `Test` type (from `Test.test`, `Test.fuzz` etc.) is opaque and nested.
+
+This type represents an untangled `Test` value.
+
+The lists of unit tests and fuzz tests only include tests that should be run,
+after taking `skip` and `only` into account. The `seenSkip` and `seenOnly`
+fields tell if any `skip` and/or `only` reduced the number of tests returned.
+A runner could fail the test run if `skip` or `only` was used.
+
 -}
 type alias Tests =
     { unitTests : List UnitTest
@@ -143,7 +154,12 @@ type alias Tests =
     }
 
 
-{-| TODO: Docs.
+{-| A unit test.
+
+  - `tag` is set via `tagTest` and used by runners to cache test results.
+  - `labels` starts with the test name, and then contains each `describe` up the hierarchy.
+  - `thunk` is the function to call to run the test.
+
 -}
 type alias UnitTest =
     { tag : String
@@ -152,7 +168,20 @@ type alias UnitTest =
     }
 
 
-{-| TODO: Docs.
+{-| A fuzz test. Like a unit test, with a few differences:
+
+  - `thunk` takes some arguments, instead of just `()`:
+      - The initial seed.
+      - The number of fuzz runs.
+      - A list of “fuzzer ints” from a previous run. If non-empty,
+        the test will first be run with input based on those ints,
+        which can quickly reproduce a previous failure. If that run
+        succeeds (or the ints are no longer valid), the test continues
+        with a regular random run.
+
+  - `runs` contains the specified number of fuzz runs if `fuzzWith`
+    was used.
+
 -}
 type alias FuzzTest =
     { tag : String
@@ -162,7 +191,7 @@ type alias FuzzTest =
     }
 
 
-{-| TODO: Docs.
+{-| A unit test either passes, or fails with a description and reason.
 -}
 type UnitTestExpectation
     = UnitTestPass
@@ -172,7 +201,16 @@ type UnitTestExpectation
         }
 
 
-{-| TODO: Docs.
+{-| A fuzz test either passes or fails. In both cases there can be a distribution report.
+In case of failures, there is a description and reason just like for unit tests, but also
+a few more fields:
+
+  - `given` is the input to the test function that caused the failure, formatted with `Debug.toString`.
+  - `fuzzerInts` is the internal fuzzer state that produced `given`. A runner can pass to the
+    `thunk` of a `FuzzTest` to reproduce a previous failure.
+  - `rerunFailure` is a function that runs the test function again with the input that
+    caused the failure. Runners can use this to capture `Debug.log` calls of the failing run.
+
 -}
 type FuzzTestExpectation
     = FuzzTestPass { distributionReport : DistributionReport }
@@ -186,14 +224,20 @@ type FuzzTestExpectation
         }
 
 
-{-| TODO: Docs.
+{-| This lets runners tag tests with an identifier, which can be used to implement
+caching of test results.
 -}
 tagTest : String -> Test -> Test
 tagTest =
     Internal.ElmTestVariant__Tagged
 
 
-{-| TODO: Docs.
+{-| Turns an opaque and nested `Test` (from `Test.test`, `Test.fuzz` etc.)
+into a flat structure that is easily consumable by runners.
+
+Runners can collect all exposed `Test` values, join them up into
+one single `Test` and then give it to this function. After that
+they can start executing tests.
 
 This replaces the deprecated [fromTest](#fromTest) function.
 
@@ -395,7 +439,11 @@ type alias Distribution =
 
 
 {-| Test Runners which have had seeds distributed to them, and which are now
-either invalid or are ready to run. Seeded runners include some metadata:
+either invalid or are ready to run.
+
+**@deprecated** Use [Tests](#Tests) from [toTests](#toTests) instead.
+
+Seeded runners include some metadata:
 
   - `Invalid` runners had a problem (e.g. two sibling tests had the same description) making them un-runnable.
   - `Only` runners can be run, but `Test.only` was used somewhere, so ultimately they will lead to a failed test run even if each test that gets run passes.
@@ -588,6 +636,10 @@ fnvHash a b =
 
 {-| Return `Nothing` if the given [`Expectation`](Expect#Expectation) is a [`pass`](Expect#pass).
 
+**@deprecated** While [`Expectation`](Expect#Expectation) is opaque,
+[UnitTestExpectation](#UnitTestExpectation) and [FuzzTestExpectation](#FuzzTestExpectation)
+from [toTests](#toTests) are open, and you can access the reason without any functions.
+
 If it is a [`fail`](Expect#fail), return a record containing the expectation
 description, the [`Reason`](Test-Runner-Failure#Reason) the test failed, and the given inputs if
 it was a fuzz test. (If it was not a fuzz test, the record's `given` field
@@ -624,6 +676,11 @@ getFailureReason expectation =
 
 
 {-| Returns a `DistributionReport` computed for a given test.
+
+**@deprecated** While [`Expectation`](Expect#Expectation) is opaque,
+[FuzzTestExpectation](#FuzzTestExpectation) from [toTests](#toTests) is open,
+and you can access the distribution report without any functions.
+
 -}
 getDistributionReport : Expectation -> DistributionReport
 getDistributionReport expectation =
@@ -637,6 +694,12 @@ getDistributionReport expectation =
 
 {-| Determine if an expectation was created by a call to `Test.todo`. Runners
 may treat these tests differently in their output.
+
+**@deprecated** While [`Expectation`](Expect#Expectation) is opaque,
+[UnitTestExpectation](#UnitTestExpectation) and [FuzzTestExpectation](#FuzzTestExpectation)
+from [toTests](#toTests) are open, and you can access the reason without any functions.
+Then you can simply compare it against the reason called `TODO`.
+
 -}
 isTodo : Expectation -> Bool
 isTodo expectation =
