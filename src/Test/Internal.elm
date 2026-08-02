@@ -91,7 +91,7 @@ toString =
     Elm.Kernel.Debug.toString
 
 
-runThunk : (() -> a) -> Result String a
+runThunk : (a -> b) -> a -> Result String b
 runThunk =
     Elm.Kernel.Test.runThunk
 
@@ -99,7 +99,7 @@ runThunk =
 wrapWithTryCatch : (a -> Expectation) -> (a -> Expectation)
 wrapWithTryCatch getExpectation =
     \a ->
-        case runThunk (\() -> getExpectation a) of
+        case runThunk getExpectation a of
             Ok expectation ->
                 expectation
 
