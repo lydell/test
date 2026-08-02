@@ -365,17 +365,7 @@ countRunnables runnable =
 
 run : Runnable -> Expectation
 run (Thunk fn) =
-    case runThunk fn of
-        Ok test ->
-            test
-
-        Err message ->
-            Expect.fail ("This test failed because it threw an exception: \"" ++ message ++ "\"")
-
-
-runThunk : (() -> a) -> Result String a
-runThunk =
-    Elm.Kernel.Test.runThunk
+    fn ()
 
 
 fromRunnableTree : RunnableTree -> List Runner

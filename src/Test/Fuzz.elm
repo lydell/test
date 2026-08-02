@@ -31,7 +31,7 @@ fuzzTest maybeRuns distribution fuzzer untrimmedDesc getExpectation =
         blankDescriptionFailure
 
     else
-        ElmTestVariant__Labeled desc <| validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution
+        ElmTestVariant__Labeled desc <| validatedFuzzTest desc fuzzer (Test.Internal.wrapWithTryCatch getExpectation) maybeRuns distribution
 
 
 {-| Knowing that the fuzz test isn't obviously invalid, run the test and package up the results.

@@ -1,4 +1,4 @@
-module Test.Internal exposing (Test(..), blankDescriptionFailure, duplicatedName, failNow, toString)
+module Test.Internal exposing (Test(..), blankDescriptionFailure, duplicatedName, failNow, toString, wrapWithTryCatch)
 
 import Random
 import RandomRun exposing (RandomRun)
@@ -89,3 +89,22 @@ duplicatedName tests =
 toString : a -> String
 toString =
     Elm.Kernel.Debug.toString
+
+
+runThunk : (() -> a) -> Result String a
+runThunk =
+    Elm.Kernel.Test.runThunk
+
+
+wrapWithTryCatch : (a -> Expectation) -> (a -> Expectation)
+wrapWithTryCatch getExpectation =
+    \a ->
+        case runThunk (\() -> getExpectation a) of
+            Ok expectation ->
+                expectation
+
+            Err message ->
+                Test.Expectation.fail
+                    { description = "This test failed because it threw an exception: \"" ++ message ++ "\""
+                    , reason = Custom
+                    }

@@ -161,7 +161,7 @@ test untrimmedDesc thunk =
         Internal.blankDescriptionFailure
 
     else
-        Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest thunk)
+        Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest (Internal.wrapWithTryCatch thunk))
 
 
 {-| Runs a single test many times with a list of given inputs.
