@@ -46,6 +46,7 @@ These functions give you the ability to run fuzzers separate of running fuzz tes
 
 -}
 
+import Array exposing (Array)
 import Bitwise
 import Char
 import Elm.Kernel.Test
@@ -147,8 +148,8 @@ A runner could fail the test run if `skip` or `only` was used.
 
 -}
 type alias Tests =
-    { unitTests : List UnitTest
-    , fuzzTests : List FuzzTest
+    { unitTests : Array UnitTest
+    , fuzzTests : Array FuzzTest
     , seenSkip : Bool
     , seenOnly : Bool
     }
@@ -252,25 +253,27 @@ toTestsHelper tag labels test =
     case test of
         Internal.ElmTestVariant__UnitTest thunk ->
             { unitTests =
-                [ { tag = tag
-                  , labels = labels
-                  , thunk = \() -> thunk () |> toUnitTestExpectation
-                  }
-                ]
-            , fuzzTests = []
+                Array.push
+                    { tag = tag
+                    , labels = labels
+                    , thunk = \() -> thunk () |> toUnitTestExpectation
+                    }
+                    Array.empty
+            , fuzzTests = Array.empty
             , seenSkip = False
             , seenOnly = False
             }
 
         Internal.ElmTestVariant__FuzzTest maybeRuns thunk ->
-            { unitTests = []
+            { unitTests = Array.empty
             , fuzzTests =
-                [ { tag = tag
-                  , labels = labels
-                  , thunk = \seed runs fuzzerInts -> thunk seed runs fuzzerInts |> toFuzzTestExpectation
-                  , runs = maybeRuns
-                  }
-                ]
+                Array.push
+                    { tag = tag
+                    , labels = labels
+                    , thunk = \seed runs fuzzerInts -> thunk seed runs fuzzerInts |> toFuzzTestExpectation
+                    , runs = maybeRuns
+                    }
+                    Array.empty
             , seenSkip = False
             , seenOnly = False
             }
@@ -282,8 +285,8 @@ toTestsHelper tag labels test =
             toTestsHelper newTag labels subTest
 
         Internal.ElmTestVariant__Skipped subTest ->
-            { unitTests = []
-            , fuzzTests = []
+            { unitTests = Array.empty
+            , fuzzTests = Array.empty
             , seenSkip = True
             , seenOnly = hasOnly subTest
             }
@@ -308,8 +311,8 @@ toTestsHelper tag labels test =
                         in
                         case ( acc.seenOnly, sub.seenOnly ) of
                             ( False, False ) ->
-                                { unitTests = acc.unitTests ++ sub.unitTests
-                                , fuzzTests = acc.fuzzTests ++ sub.fuzzTests
+                                { unitTests = Array.append acc.unitTests sub.unitTests
+                                , fuzzTests = Array.append acc.fuzzTests sub.fuzzTests
                                 , seenSkip = seenSkip
                                 , seenOnly = False
                                 }
@@ -327,14 +330,14 @@ toTestsHelper tag labels test =
                                 }
 
                             ( True, True ) ->
-                                { unitTests = acc.unitTests ++ sub.unitTests
-                                , fuzzTests = acc.fuzzTests ++ sub.fuzzTests
+                                { unitTests = Array.append acc.unitTests sub.unitTests
+                                , fuzzTests = Array.append acc.fuzzTests sub.fuzzTests
                                 , seenSkip = seenSkip
                                 , seenOnly = True
                                 }
                     )
-                    { unitTests = []
-                    , fuzzTests = []
+                    { unitTests = Array.empty
+                    , fuzzTests = Array.empty
                     , seenSkip = False
                     , seenOnly = False
                     }
