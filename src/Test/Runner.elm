@@ -244,11 +244,11 @@ This replaces the deprecated [fromTest](#fromTest) function.
 -}
 toTests : Test -> Tests
 toTests test =
-    fromTestV2Helper "" [] test
+    toTestsHelper "" [] test
 
 
-fromTestV2Helper : String -> List String -> Test -> Tests
-fromTestV2Helper tag labels test =
+toTestsHelper : String -> List String -> Test -> Tests
+toTestsHelper tag labels test =
     case test of
         Internal.ElmTestVariant__UnitTest thunk ->
             { unitTests =
@@ -276,10 +276,10 @@ fromTestV2Helper tag labels test =
             }
 
         Internal.ElmTestVariant__Labeled label subTest ->
-            fromTestV2Helper tag (label :: labels) subTest
+            toTestsHelper tag (label :: labels) subTest
 
         Internal.ElmTestVariant__Tagged newTag subTest ->
-            fromTestV2Helper newTag labels subTest
+            toTestsHelper newTag labels subTest
 
         Internal.ElmTestVariant__Skipped subTest ->
             { unitTests = []
@@ -291,7 +291,7 @@ fromTestV2Helper tag labels test =
         Internal.ElmTestVariant__Only subTest ->
             let
                 sub =
-                    fromTestV2Helper tag labels subTest
+                    toTestsHelper tag labels subTest
             in
             { sub | seenOnly = True }
 
@@ -301,7 +301,7 @@ fromTestV2Helper tag labels test =
                     (\subTest acc ->
                         let
                             sub =
-                                fromTestV2Helper tag labels subTest
+                                toTestsHelper tag labels subTest
 
                             seenSkip =
                                 acc.seenSkip || sub.seenSkip
