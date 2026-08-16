@@ -3,14 +3,14 @@ module Test.RunnerV2 exposing
     , UnitTest, getUnitTestTag, getUnitTestLabels, runUnitTest
     , UnitTestExpectation(..), UnitTestFailData, getUnitTestFailDescription, getUnitTestFailReason
     , FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest
-    , FuzzTestExpectation(..), FuzzTestPassData, FuzzTestFailData, getFuzzTestPassDistributionReport, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts, rerunFuzzTestFailure
+    , FuzzTestExpectation(..), getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts, rerunFuzzTestFailure
     , tagTest
     )
 
 {-| This is an "experts only" module that exposes functions needed to run tests.
 A typical user will use an existing runner library for Node or the browser,
 which is implemented using this interface. A list of these runners
-can be found in the `README`.
+can be found in the [README](.).
 
 This module supersedes the deprecated [Test.Runner](./Runner) module.
 
@@ -29,7 +29,7 @@ This module supersedes the deprecated [Test.Runner](./Runner) module.
 ## Fuzz Tests
 
 @docs FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest
-@docs FuzzTestExpectation, FuzzTestPassData, FuzzTestFailData, getFuzzTestPassDistributionReport, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts, rerunFuzzTestFailure
+@docs FuzzTestExpectation, getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts, rerunFuzzTestFailure
 
 
 ## Tag Tests
@@ -48,20 +48,19 @@ import Test.Internal as Internal
 import Test.Runner.Failure exposing (Reason(..))
 
 
-{-| The `Test` type (from `Test.test`, `Test.fuzz` etc.) is nested.
-This type represents has flat arrays of tests and some metadata.
+{-| This type contains flat arrays of tests and some metadata.
 
 `Tests` is opaque for future extensibility. It contains the following:
 
-  - `unitTests`: `Array UnitTest`
-  - `fuzzTests`: `Array FuzzTest`
-  - `seenSkip`: `Bool`
-  - `seenOnly`: `Bool`
+  - `unitTests : Array UnitTest`
+  - `fuzzTests : Array FuzzTest`
+  - `seenSkip : Bool`
+  - `seenOnly : Bool`
 
-Use the various `get` functions to access each field.
+Use the various `get*` functions to access each field.
 
 The lists of unit tests and fuzz tests only include tests that should be run,
-after taking `skip` and `only` into account. The `seenSkip` and `seenOnly`
+after taking [`skip`](Test#skip) and [`only`](Test#only) into account. The `seenSkip` and `seenOnly`
 fields tell if any `skip` and/or `only` reduced the number of tests returned.
 A runner could fail the test run if `skip` or `only` was used.
 
@@ -110,11 +109,11 @@ getSeenOnly (Tests testsData) =
 
 `UnitTest` is opaque for future extensibility. It contains the following:
 
-  - `tag`: `String`. The tag is set via `tagTest` and used by runners to cache test results.
-  - `labels`: `List String`. The list starts with the test name, and then contains each `describe` up the hierarchy.
-  - `thunk`: `() -> UnitTestExpectation`. This is the function to call to run the test.
+  - `tag : String`. The tag is set via [`tagTest`](#tagTest) and used by runners to cache test results.
+  - `labels : List String`. The list starts with the test name, and then contains each [`describe`](Test#describe) up the hierarchy.
+  - `thunk : () -> UnitTestExpectation`. This is the function originally passed to [`Test.test`](Test#test).
 
-Use the various `get` functions to access each field, as well as `runUnitTest` to run it.
+Use the various `get*` functions to access each field, as well as [`runUnitTest`](#runUnitTest) to run it.
 
 -}
 type UnitTest
@@ -125,7 +124,7 @@ type UnitTest
         }
 
 
-{-| Get the tag of the test.
+{-| Get the [tag](#tagTest) of the test.
 -}
 getUnitTestTag : UnitTest -> String
 getUnitTestTag (UnitTest data) =
@@ -151,12 +150,12 @@ it requires more arguments.
 
 `FuzzTest` is opaque for future extensibility. It contains the following:
 
-  - `tag`: `String`. The tag is set via `tagTest` and used by runners to cache test results.
-  - `labels`: `List String`. The list starts with the test name, and then contains each `describe` up the hierarchy.
-  - `runs`: `Maybe Int`. Contains the specified number of fuzz runs if `fuzzWith` was used.
-  - `thunk`: `Random.Seed -> Int -> List Int -> FuzzTestExpectation`. This is the function to call to run the test.
+  - `tag : String`. The tag is set via [`tagTest`](#tagTest) and used by runners to cache test results.
+  - `labels : List String`. The list starts with the test name, and then contains each [`describe`](Test#describe) up the hierarchy.
+  - `runs : Maybe Int`. Contains the specified number of fuzz runs if [`fuzzWith`](Test#fuzzWith) was used.
+  - `thunk : Random.Seed -> Int -> List Int -> FuzzTestExpectation`. This function runs the fuzz test.
 
-Use the various `get` functions to access each field, as well as `runFuzzTest` to run it.
+Use the various `get*` functions to access each field, as well as [`runFuzzTest`](#runFuzzTest) to run it.
 
 -}
 type FuzzTest
@@ -168,7 +167,7 @@ type FuzzTest
         }
 
 
-{-| Get the tag of the test.
+{-| Get the [tag](#tagTest) of the test.
 -}
 getFuzzTestTag : FuzzTest -> String
 getFuzzTestTag (FuzzTest data) =
@@ -182,7 +181,7 @@ getFuzzTestLabels (FuzzTest data) =
     data.labels
 
 
-{-| Get the the specified number of fuzz runs if `fuzzWith` was used.
+{-| Get the the specified number of fuzz runs if [`fuzzWith`](Test#fuzzWith) was used.
 -}
 getFuzzTestRuns : FuzzTest -> Maybe Int
 getFuzzTestRuns (FuzzTest data) =
@@ -216,10 +215,10 @@ type UnitTestExpectation
 
 `UnitTestFailData` is opaque for future extensibility. It contains the following:
 
-  - `description`: `String`. The failure as described by the `Expect` module.
-  - `reason`: `Reason`. See the `Reason` type.
+  - `description : String`. The failure as described by the [`Expect`](Expect) module.
+  - `reason : Reason`. See the [`Reason`](Test.Runner.Failure#Reason) type.
 
-Use the various `get` functions to access each field.
+Use the various `get*` functions to access each field.
 
 -}
 type UnitTestFailData
@@ -245,14 +244,7 @@ getUnitTestFailReason (UnitTestFailData data) =
 
 {-| A fuzz test either passes or fails. In both cases there can be a distribution report.
 In case of failures, there is a description and reason just like for unit tests, but also
-a few more fields:
-
-  - `given` is the input to the test function that caused the failure, formatted with `Debug.toString`.
-  - `fuzzerInts` is the internal fuzzer state that produced `given`. A runner can pass to the
-    `thunk` of a `FuzzTest` to reproduce a previous failure.
-  - `rerunFailure` is a function that runs the test function again with the input that
-    caused the failure. Runners can use this to capture `Debug.log` calls of the failing run.
-
+a few more fuzz-specific fields – see [FuzzTestFailData](#FuzzTestFailData).
 -}
 type FuzzTestExpectation
     = FuzzTestPass FuzzTestPassData
@@ -261,16 +253,16 @@ type FuzzTestExpectation
 
 {-| `FuzzTestFailData` is opaque for future extensibility. It contains the following:
 
-  - `distributionReport`: `DistributionReport`. See the `DistributionReport` type.
+  - `distributionReport : DistributionReport`. See the [`DistributionReport`](Test.Distribution#DistributionReport) type.
 
-Use the various `get` functions to access each field, as well as `rerunFuzzTestFailure` for running the failing run again.
+Use the various `get*` functions to access each field.
 
 -}
 type FuzzTestPassData
     = FuzzTestPassData { distributionReport : DistributionReport }
 
 
-{-| Get the distribution report.
+{-| Get the distribution report from a passing test.
 -}
 getFuzzTestPassDistributionReport : FuzzTestPassData -> DistributionReport
 getFuzzTestPassDistributionReport (FuzzTestPassData data) =
@@ -281,17 +273,17 @@ getFuzzTestPassDistributionReport (FuzzTestPassData data) =
 
 `FuzzTestFailData` is opaque for future extensibility. It contains the following:
 
-  - `description`: `String`. The failure as described by the `Expect` module.
-  - `reason`: `Reason`. See the `Reason` type.
-  - `distributionReport`: `DistributionReport`. See the `DistributionReport` type.
-  - `given`: `Maybe String`. This is the input to the test function that caused the failure, formatted with `Debug.toString`.
+  - `description : String`. The failure as described by the [`Expect`](Expect) module.
+  - `reason : Reason`. See the [`Reason`](Test.Runner.Failure#Reason) type.
+  - `distributionReport : DistributionReport`. See the [`DistributionReport`](Test.Distribution#DistributionReport) type.
+  - `given : Maybe String`. This is the input to the test function that caused the failure, formatted with `Debug.toString`.
     A fuzz test can in unusual circumstances fail to even produce a `given` value, which is why it is `Maybe`.
-  - `fuzzerInts`: `List Int`. This is the internal fuzzer state that produced `given`. A runner can pass to the
-    `thunk` of a `FuzzTest` to reproduce a previous failure.
+  - `fuzzerInts : List Int`. This is the internal fuzzer state that produced `given`. A runner can pass this
+    to [runFuzzTest](#runFuzzTest) to reproduce a previous failure.
   - `rerunFailure` is a function that runs the test function again with the input that
     caused the failure. Runners can use this to capture `Debug.log` calls of the failing run.
 
-Use the various `get` functions to access each field, as well as `rerunFuzzTestFailure` for running the failing run again.
+Use the various `get*` functions to access each field, as well as [`rerunFuzzTestFailure`](#rerunFuzzTestFailure) for running the failing run again.
 
 -}
 type FuzzTestFailData
@@ -319,7 +311,7 @@ getFuzzTestFailReason (FuzzTestFailData data) =
     data.reason
 
 
-{-| Get the distribution report.
+{-| Get the distribution report from a failing test.
 -}
 getFuzzTestFailDistributionReport : FuzzTestFailData -> DistributionReport
 getFuzzTestFailDistributionReport (FuzzTestFailData data) =
@@ -327,6 +319,10 @@ getFuzzTestFailDistributionReport (FuzzTestFailData data) =
 
 
 {-| Get the value that caused the test to fail.
+
+This is the input to the test function that caused the failure, formatted with `Debug.toString`.
+A fuzz test can in unusual circumstances fail to even produce a `given` value, which is why it is `Maybe`.
+
 -}
 getFuzzTestFailGiven : FuzzTestFailData -> Maybe String
 getFuzzTestFailGiven (FuzzTestFailData data) =
@@ -334,6 +330,9 @@ getFuzzTestFailGiven (FuzzTestFailData data) =
 
 
 {-| Get the internal fuzzer state that produced the test input that caused the failure.
+
+A runner can pass this to [runFuzzTest](#runFuzzTest) to reproduce a previous failure.
+
 -}
 getFuzzTestFailFuzzerInts : FuzzTestFailData -> List Int
 getFuzzTestFailFuzzerInts (FuzzTestFailData data) =
@@ -341,6 +340,9 @@ getFuzzTestFailFuzzerInts (FuzzTestFailData data) =
 
 
 {-| Rerun the test with the input that caused the failure.
+
+Runners can use this to capture `Debug.log` calls of the failing run.
+
 -}
 rerunFuzzTestFailure : FuzzTestFailData -> ()
 rerunFuzzTestFailure (FuzzTestFailData data) =
@@ -355,7 +357,7 @@ tagTest =
     Internal.ElmTestVariant__Tagged
 
 
-{-| Turns a nested `Test` (from `Test.test`, `Test.fuzz` etc.)
+{-| Turns a nested [`Test`](Test#Test) (from [`Test.test`](Test#test), [`Test.fuzz`](Test#fuzz) etc.)
 into a flat structure that is easily consumable by runners.
 
 Runners can collect all exposed `Test` values, join them up into
