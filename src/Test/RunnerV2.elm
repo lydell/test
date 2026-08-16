@@ -259,12 +259,19 @@ type FuzzTestExpectation
     | FuzzTestFail FuzzTestFailData
 
 
-{-| -}
+{-| `FuzzTestFailData` is opaque for future extensibility. It contains the following:
+
+  - `distributionReport`: `DistributionReport`. See the `DistributionReport` type.
+
+Use the various `get` functions to access each field, as well as `rerunFuzzTestFailure` for running the failing run again.
+
+-}
 type FuzzTestPassData
     = FuzzTestPassData { distributionReport : DistributionReport }
 
 
-{-| -}
+{-| Get the distribution report.
+-}
 getFuzzTestPassDistributionReport : FuzzTestPassData -> DistributionReport
 getFuzzTestPassDistributionReport (FuzzTestPassData data) =
     data.distributionReport
