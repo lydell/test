@@ -1,5 +1,6 @@
 module Test.Internal exposing (Test(..), blankDescriptionFailure, duplicatedName, failNow, toString, wrapWithTryCatch)
 
+import Elm.Kernel.Test
 import Random
 import RandomRun exposing (RandomRun)
 import Set exposing (Set)
