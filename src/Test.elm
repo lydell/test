@@ -1,13 +1,14 @@
 module Test exposing
-    ( Test, test, parametrized
+    ( Test, test
     , describe, concat, todo, skip, only
-    , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions, fuzzWithExamples
+    , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
     , Distribution, noDistribution, reportDistribution, expectDistribution
+    , repeat, testWith
     )
 
 {-| A module containing functions for creating and managing tests.
 
-@docs Test, test, parametrized
+@docs Test, test
 
 
 ## Organizing Tests
@@ -17,8 +18,13 @@ module Test exposing
 
 ## Fuzz Testing
 
-@docs fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions, fuzzWithExamples
+@docs fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
 @docs Distribution, noDistribution, reportDistribution, expectDistribution
+
+
+## Repeating Tests
+
+@docs repeat, testWith
 
 -}
 
@@ -162,36 +168,6 @@ test untrimmedDesc thunk =
 
     else
         Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest (\() -> thunk ()))
-
-
-{-| Runs a single test many times with a list of given inputs.
-
-    import Expect
-    import Test exposing (parametrized)
-
-
-    parametrized
-        [ ( "negative", { input = -1, expected = LT } )
-        , ( "zero", { input = 0, expected = EQ } )
-        , ( "positive", { input = 1, expected = GT } )
-        ]
-        "compare with zero"
-    <|
-        \{ input, expected } ->
-            compare input 0
-                |> Expect.equal expected
-
-The strings in the tuples are used as labels to make it easier to tell which test failed.
-The values in the tuples can be anything you like. In this example we used records to
-easily specify the input value the the expected outcome.
-
-If you are looking for this but for a fuzz test, see [fuzzWithExamples](#fuzzWithExamples).
-
--}
-parametrized : List ( String, a ) -> String -> (a -> Expectation) -> Test
-parametrized cases desc thunk =
-    describe desc
-        (List.map (\( name, value ) -> test name (\() -> thunk value)) cases)
 
 
 {-| Returns a [`Test`](#Test) that is "TODO" (not yet implemented). These tests
@@ -413,58 +389,6 @@ fuzzWithHelp options aTest =
                 |> Internal.ElmTestVariant__Batch
 
 
-{-| This is the combination of [fuzzWith](#fuzzWith) and [parametrized](#parametrized).
-
-In addition to running the fuzz test, run the same test with a few hardcoded examples.
-When the fuzz test fails, you might want to add that case to the examples as a regression test.
-That specific input might never be picked randomly again!
-
-    import Expect
-    import Fuzz exposing (float)
-    import Test exposing (fuzzWithExamples, noDistribution)
-
-
-    fuzzWithExamples { runs = 100, distribution = noDistribution }
-        float
-        [ ( "NaN", 0 / 0 )
-        , ( "Infinity", 1 / 0 )
-        ]
-        "compare with zero is only EQ when input also is zero"
-    <|
-        \input ->
-            let
-                expect =
-                    if input == 0 && input == input then
-                        Expect.equal
-
-                    else
-                        Expect.notEqual
-            in
-            compare input 0
-                |> expect EQ
-
--}
-fuzzWithExamples : FuzzOptions a -> Fuzzer a -> List ( String, a ) -> String -> (a -> Expectation) -> Test
-fuzzWithExamples options fuzzer examples desc getTest =
-    let
-        labels =
-            List.map Tuple.first examples |> Set.fromList
-
-        -- Just in case the examples are `[ ( "fuzz", a ), ( "fuzz_", b ) ]`.
-        -- Sibling tests can’t have the same label.
-        fuzzLabel label =
-            if Set.member label labels then
-                fuzzLabel (label ++ "_")
-
-            else
-                label
-    in
-    describe desc
-        (List.map (\( name, value ) -> test name (\() -> getTest value)) examples
-            ++ [ fuzzWith options fuzzer (fuzzLabel "fuzz") getTest ]
-        )
-
-
 {-| Take a function that produces a test, and calls it several (usually 100) times, using a randomly-generated input
 from a [`Fuzzer`](http://package.elm-lang.org/packages/elm-explorations/test/latest/Fuzz) each time. This allows you to
 test that a property that should always be true is indeed true under a wide variety of conditions. The function also
@@ -638,6 +562,75 @@ Currently the statistical test is tuned to allow a false positive/negative in
 expectDistribution : List ( ExpectedDistribution, String, a -> Bool ) -> Distribution a
 expectDistribution =
     Test.Distribution.Internal.ExpectDistribution
+
+
+{-| This is like [describe](#describe), but all the tests use the same function.
+Just like with `describe`, you pass a list of tests – but they are missing their
+function to run! Instead, the function that all tests will be run with comes last.
+
+This is useful if you want to run the same test with different inputs – also
+known as _parametrized tests:_
+
+    repeat "checking if a string is whitespace only"
+        [ testWith { input = "", expected = True } "empty string"
+        , testWith { input = " \n\t", expected = True } "space, newline, tab"
+        , testWith { input = "a", expected = False } "only non-whitespace"
+        , testWith { input = "a b", expected = False } "mixed"
+        ]
+    <|
+        \{ input, expected } ->
+            let
+                isOnlyWhitespace =
+                    String.words input == [ "" ]
+            in
+            isOnlyWhitespace
+                |> Expect.equal expected
+
+In the above example we passed a record with `input` and `expected` to each test,
+but you can pass whatever you want.
+
+You can also use this for [fuzz](#fuzz) tests. Let’s say your fuzz test found an
+issue after a _long_ time, and you fix it. Do you have confidence it will never
+regress? After all, finding the issue took some amount of luck, and there is no
+guarantee that specific input will ever be generated again. In this case, you
+can use `repeat` to save such inputs as explicit regression tests:
+
+    repeat "String.words never returns an empty list"
+        [ testWith " \n\t" "only whitespace"
+        , fuzz Fuzz.string "fuzz"
+        ]
+    <|
+        \string ->
+            String.words string
+                |> Expect.notEqual []
+
+Having a few hardcoded examples for a fuzz test can also be useful to highlight
+important cases.
+
+If you want to [skip](#skip) tests, or focus on tests with [only](#only), use
+function composition (`<<`):
+
+    repeat "String.words never returns an empty list"
+        [ only << testWith " \n\t" "only whitespace"
+        , fuzz Fuzz.string "fuzz"
+        ]
+    <|
+        \string ->
+            String.words string
+                |> Expect.notEqual []
+
+-}
+repeat : String -> List ((a -> Expectation) -> Test) -> (a -> Expectation) -> Test
+repeat desc tests thunk =
+    describe desc (List.map (\toTest -> toTest thunk) tests)
+
+
+{-| This is a small wrapper around [test](#test), which is supposed to be used with [repeat](#repeat).
+See that function for examples.
+-}
+testWith : a -> String -> (a -> Expectation) -> Test
+testWith a desc thunk =
+    test desc (\() -> thunk a)
 
 
 

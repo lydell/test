@@ -170,20 +170,6 @@ testTests =
                     test "" expectPass
                         |> expectTestToFail
             ]
-        , describe "parametrized"
-            [ test "fails with empty list" <|
-                \() ->
-                    parametrized [] "x" expectPass
-                        |> expectTestToFail
-            , test "fails with empty name" <|
-                \() ->
-                    parametrized [ ( "x", () ) ] "" expectPass
-                        |> expectTestToFail
-            , test "fails with empty sub name" <|
-                \() ->
-                    parametrized [ ( "", () ) ] "" expectPass
-                        |> expectTestToFail
-            ]
         , describe "fuzz"
             [ test "fails with empty name" <|
                 \() ->
@@ -206,32 +192,6 @@ testTests =
                         expectPass
                         |> expectTestToFail
             ]
-        , describe "fuzzWithExamples"
-            [ test "fails with fewer than 1 run" <|
-                \() ->
-                    fuzzWithExamples { runs = 0, distribution = noDistribution }
-                        Fuzz.bool
-                        []
-                        "nonpositive"
-                        expectPass
-                        |> expectTestToFail
-            , test "fails with empty name" <|
-                \() ->
-                    fuzzWithExamples { runs = 1, distribution = noDistribution }
-                        Fuzz.bool
-                        []
-                        ""
-                        expectPass
-                        |> expectTestToFail
-            , test "fails with empty sub name" <|
-                \() ->
-                    fuzzWithExamples { runs = 1, distribution = noDistribution }
-                        Fuzz.int
-                        [ ( "", 987461349871874 ) ]
-                        "x"
-                        (\n -> n |> Expect.equal 987461349871874)
-                        |> expectTestToFail
-            ]
         , describe "Test.todo"
             [ test "causes test failure" <|
                 \() ->
@@ -242,6 +202,20 @@ testTests =
             , test "Simple failures are not TODO" <|
                 \_ ->
                     Expect.fail "reason" |> Test.Runner.isTodo |> Expect.equal False
+            ]
+        , describe "repeat"
+            [ test "fails with empty list" <|
+                \() ->
+                    repeat "x" [] expectPass
+                        |> expectTestToFail
+            , test "fails with empty name" <|
+                \() ->
+                    repeat "" [ testWith () "x" ] expectPass
+                        |> expectTestToFail
+            , test "fails with empty sub name" <|
+                \() ->
+                    repeat "x" [ testWith () "" ] expectPass
+                        |> expectTestToFail
             ]
         , identicalNamesAreRejectedTests
         ]
