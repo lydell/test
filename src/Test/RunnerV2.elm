@@ -405,7 +405,7 @@ toTestsHelper tag labels test =
             { unitTests = Array.empty
             , fuzzTests = Array.empty
             , seenSkip = True
-            , seenOnly = hasOnly subTest
+            , seenOnly = False
             }
 
         Internal.ElmTestVariant__Only subTest ->
@@ -458,31 +458,6 @@ toTestsHelper tag labels test =
                     , seenSkip = False
                     , seenOnly = False
                     }
-
-
-hasOnly : Test -> Bool
-hasOnly test =
-    case test of
-        Internal.ElmTestVariant__UnitTest _ ->
-            False
-
-        Internal.ElmTestVariant__FuzzTest _ _ ->
-            False
-
-        Internal.ElmTestVariant__Labeled _ subTest ->
-            hasOnly subTest
-
-        Internal.ElmTestVariant__Tagged _ subTest ->
-            hasOnly subTest
-
-        Internal.ElmTestVariant__Skipped subTest ->
-            hasOnly subTest
-
-        Internal.ElmTestVariant__Only _ ->
-            True
-
-        Internal.ElmTestVariant__Batch subTests ->
-            List.any hasOnly subTests
 
 
 toUnitTestExpectation : Expectation -> UnitTestExpectation

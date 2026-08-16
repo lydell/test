@@ -7,6 +7,7 @@ import FuzzerTests exposing (fuzzerTests)
 import Helpers exposing (..)
 import RandomRunTests
 import RunnerTests
+import RunnerV2Tests
 import ShrinkingChallengeTests exposing (shrinkingChallenges)
 import Test exposing (..)
 import Test.Html.EventTests
@@ -28,6 +29,7 @@ all =
         , fuzzerTests
         , floatWithinTests
         , RunnerTests.all
+        , RunnerV2Tests.all
         , elmHtmlTests
         , shrinkingChallenges
         , RandomRunTests.all
