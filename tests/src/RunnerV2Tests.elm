@@ -148,6 +148,40 @@ all =
                             , fuzzTestsLabels = []
                             }
             ]
+        , describe "tagging tests"
+            [ test "runners can tag tests with an identifier of choice" <|
+                \() ->
+                    let
+                        suite =
+                            concat
+                                [ Runner.tagTest "tag1" (test "standalone test" testImpl)
+                                , Runner.tagTest "tag2"
+                                    (describe "describe"
+                                        [ test "nested" testImpl
+                                        ]
+                                    )
+                                , Runner.tagTest "tag3"
+                                    (concat
+                                        [ test "concatenated" testImpl
+                                        ]
+                                    )
+                                ]
+                    in
+                    Runner.toTests suite
+                        |> Runner.getUnitTests
+                        |> Array.toList
+                        |> List.map
+                            (\unitTest ->
+                                ( Runner.getUnitTestLabels unitTest |> List.reverse
+                                , Runner.getUnitTestTag unitTest
+                                )
+                            )
+                        |> Expect.equal
+                            [ ( [ "standalone test" ], "tag1" )
+                            , ( [ "describe", "nested" ], "tag2" )
+                            , ( [ "concatenated" ], "tag3" )
+                            ]
+            ]
         , describe "catching exceptions"
             [ test "when a test raises an exception, it is turned into a failure" <|
                 \() ->
@@ -165,7 +199,7 @@ all =
                                     data
                                         |> Expect.all
                                             [ Runner.getUnitTestFailDescription
-                                                >> Expect.equal "This test failed because it threw an exception: \"Error: TODO in module `RunnerV2Tests` on line 155\n\ncrash\""
+                                                >> Expect.equal "This test failed because it threw an exception: \"Error: TODO in module `RunnerV2Tests` on line 189\n\ncrash\""
                                             , Runner.getUnitTestFailReason
                                                 >> Expect.equal Test.Runner.Failure.Custom
                                             ]
