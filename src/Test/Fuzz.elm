@@ -48,52 +48,22 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
 
                     else
                         desc
-
-                runFuzzLoop () =
-                    fuzzLoop
-                        { fuzzer = fuzzer
-                        , testFn = getExpectation
-                        , initialSeed = seed
-                        , runsNeeded = runs
-                        , distribution = distribution
-                        }
-                        (initLoopState seed distribution)
             in
             let
                 { failure, distributionReport } =
-                    if List.isEmpty fuzzerInts then
-                        runFuzzLoop ()
+                    case tryReproduceFailureFromFuzzerInts fuzzer getExpectation fuzzerInts of
+                        Just runResult ->
+                            runResult
 
-                    else
-                        -- Reproduce a previous failure.
-                        let
-                            randomRun =
-                                RandomRun.fromList fuzzerInts
-                        in
-                        case Fuzz.Internal.generate (PRNG.hardcoded randomRun) fuzzer of
-                            Generated { value } ->
-                                case getExpectation value of
-                                    Pass _ ->
-                                        -- The saved `RandomRun` now passes – continue with
-                                        -- a regular fuzz run.
-                                        runFuzzLoop ()
-
-                                    Fail { failData } ->
-                                        { failure =
-                                            Just
-                                                { given = Just <| Test.Internal.toString value
-                                                , randomRun = randomRun
-                                                , failData = failData
-                                                }
-
-                                        -- In this mode we can't do a distribution report, because we ran just once.
-                                        , distributionReport = NoDistribution
-                                        }
-
-                            Rejected _ ->
-                                -- If the code of the test has changed, a saved `RandomRun` might
-                                -- not be usable anymore. If so, just ignore it and start a regular run.
-                                runFuzzLoop ()
+                        Nothing ->
+                            fuzzLoop
+                                { fuzzer = fuzzer
+                                , testFn = getExpectation
+                                , initialSeed = seed
+                                , runsNeeded = runs
+                                , distribution = distribution
+                                }
+                                (initLoopState seed distribution)
             in
             case failure of
                 Nothing ->
@@ -117,6 +87,45 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
                                         ()
                         }
         )
+
+
+tryReproduceFailureFromFuzzerInts : Fuzzer a -> (a -> Expectation) -> List Int -> Maybe RunResult
+tryReproduceFailureFromFuzzerInts fuzzer getExpectation fuzzerInts =
+    if List.isEmpty fuzzerInts then
+        -- No fuzzer ints were passed – continue with a regular fuzz run.
+        Nothing
+
+    else
+        -- Reproduce a previous failure.
+        let
+            randomRun =
+                RandomRun.fromList fuzzerInts
+        in
+        case Fuzz.Internal.generate (PRNG.hardcoded randomRun) fuzzer of
+            Generated { value } ->
+                case getExpectation value of
+                    Pass _ ->
+                        -- The saved `RandomRun` now passes – continue with
+                        -- a regular fuzz run.
+                        Nothing
+
+                    Fail { failData } ->
+                        Just
+                            { failure =
+                                Just
+                                    { given = Just <| Test.Internal.toString value
+                                    , randomRun = randomRun
+                                    , failData = failData
+                                    }
+
+                            -- In this mode we can't do a distribution report, because we ran just once.
+                            , distributionReport = NoDistribution
+                            }
+
+            Rejected _ ->
+                -- If the code of the test has changed, a saved `RandomRun` might
+                -- not be usable anymore. If so, just ignore it and start a regular run.
+                Nothing
 
 
 type alias Failure =
