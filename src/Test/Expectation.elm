@@ -53,13 +53,10 @@ type FuzzTestExpectation
         }
 
 
-fail : { description : String, reason : Reason } -> Expectation
-fail { description, reason } =
+fail : FailData -> Expectation
+fail failData =
     Fail
-        { failData =
-            { description = description
-            , reason = reason
-            }
+        { failData = failData
         , given = Nothing
         , distributionReport = NoDistribution
         }
