@@ -3,7 +3,7 @@ module Test.Expectation exposing
     , FailData
     , FuzzTestExpectation(..)
     , fail
-    , fuzzExpectationToExpectation
+    , fromFuzzTestExpectation
     )
 
 import RandomRun exposing (RandomRun)
@@ -68,8 +68,8 @@ fail { description, reason } =
 {-| Due to backwards compatibility, we are forced to do this type conversion,
 without losing data – see `BreakingChangeWorkaround`.
 -}
-fuzzExpectationToExpectation : FuzzTestExpectation -> Expectation
-fuzzExpectationToExpectation fuzzTestExpectation =
+fromFuzzTestExpectation : FuzzTestExpectation -> Expectation
+fromFuzzTestExpectation fuzzTestExpectation =
     case fuzzTestExpectation of
         FuzzTestPass { distributionReport } ->
             Pass distributionReport

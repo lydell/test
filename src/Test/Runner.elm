@@ -244,7 +244,7 @@ distributeSeedsHelp hashed runs seed test =
                     Random.step Random.independentSeed seed
             in
             { seed = nextSeed
-            , all = [ Runnable (Thunk (\_ -> aRun firstSeed (maybeRuns |> Maybe.withDefault runs) [] |> Test.Expectation.fuzzExpectationToExpectation)) ]
+            , all = [ Runnable (Thunk (\_ -> aRun firstSeed (maybeRuns |> Maybe.withDefault runs) [] |> Test.Expectation.fromFuzzTestExpectation)) ]
             , only = []
             , skipped = []
             }
