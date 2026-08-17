@@ -97,7 +97,7 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
             in
             case failure of
                 Nothing ->
-                    FuzzTestPass { distributionReport = distributionReport }
+                    FuzzTestPass distributionReport
 
                 Just failure_ ->
                     FuzzTestFail

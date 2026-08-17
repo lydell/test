@@ -259,14 +259,14 @@ Use the various `get*` functions to access each field.
 
 -}
 type FuzzTestPassData
-    = FuzzTestPassData { distributionReport : DistributionReport }
+    = FuzzTestPassData DistributionReport
 
 
 {-| Get the distribution report from a passing test.
 -}
 getFuzzTestPassDistributionReport : FuzzTestPassData -> DistributionReport
-getFuzzTestPassDistributionReport (FuzzTestPassData data) =
-    data.distributionReport
+getFuzzTestPassDistributionReport (FuzzTestPassData distributionReport) =
+    distributionReport
 
 
 {-| Information about a fuzz test failure.
@@ -482,8 +482,8 @@ toUnitTestExpectation expectation =
 toFuzzTestExpectation : Test.Expectation.FuzzTestExpectation -> FuzzTestExpectation
 toFuzzTestExpectation expectation =
     case expectation of
-        Test.Expectation.FuzzTestPass data ->
-            FuzzTestPass (FuzzTestPassData data)
+        Test.Expectation.FuzzTestPass distributionReport ->
+            FuzzTestPass (FuzzTestPassData distributionReport)
 
         Test.Expectation.FuzzTestFail data ->
             FuzzTestFail

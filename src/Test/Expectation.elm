@@ -35,7 +35,7 @@ type alias FailData =
 
 
 type FuzzTestExpectation
-    = FuzzTestPass { distributionReport : DistributionReport }
+    = FuzzTestPass DistributionReport
     | FuzzTestFail
         { given : Maybe String
         , randomRun : RandomRun
@@ -68,7 +68,7 @@ without losing data – see `BreakingChangeWorkaround`.
 fromFuzzTestExpectation : FuzzTestExpectation -> Expectation
 fromFuzzTestExpectation fuzzTestExpectation =
     case fuzzTestExpectation of
-        FuzzTestPass { distributionReport } ->
+        FuzzTestPass distributionReport ->
             Pass distributionReport
 
         FuzzTestFail record ->
