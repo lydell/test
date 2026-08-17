@@ -113,7 +113,7 @@ getSeenOnly (Tests testsData) =
   - `labels : List String`. The list starts with the test name, and then contains each [`describe`](Test#describe) up the hierarchy.
   - `thunk : () -> UnitTestExpectation`. This is the function originally passed to [`Test.test`](Test#test).
 
-Use the various `get*` functions to access each field, as well as [`runUnitTest`](#runUnitTest) to run it.
+Use the various `getUnitTest*` functions to access each field, as well as [`runUnitTest`](#runUnitTest) to run it.
 
 -}
 type UnitTest
@@ -145,7 +145,7 @@ runUnitTest (UnitTest data) =
     data.thunk ()
 
 
-{-| A unit test. It’s similar to a unit test, but has more data, and running
+{-| A fuzz test. It’s similar to a unit test but has more data, and running
 it requires more arguments.
 
 `FuzzTest` is opaque for future extensibility. It contains the following:
@@ -155,7 +155,7 @@ it requires more arguments.
   - `runs : Maybe Int`. Contains the specified number of fuzz runs if [`fuzzWith`](Test#fuzzWith) was used.
   - `thunk : Random.Seed -> Int -> List Int -> FuzzTestExpectation`. This function runs the fuzz test.
 
-Use the various `get*` functions to access each field, as well as [`runFuzzTest`](#runFuzzTest) to run it.
+Use the various `getFuzzTest*` functions to access each field, as well as [`runFuzzTest`](#runFuzzTest) to run it.
 
 -}
 type FuzzTest
@@ -283,7 +283,7 @@ getFuzzTestPassDistributionReport (FuzzTestPassData distributionReport) =
   - `rerunFailure` is a function that runs the test function again with the input that
     caused the failure. Runners can use this to capture `Debug.log` calls of the failing run.
 
-Use the various `get*` functions to access each field, as well as [`rerunFuzzTestFailure`](#rerunFuzzTestFailure) for running the failing run again.
+Use the various `getFuzzTestFail*` functions to access each field, as well as [`rerunFuzzTestFailure`](#rerunFuzzTestFailure) for running the failing run again.
 
 -}
 type FuzzTestFailData
