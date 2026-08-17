@@ -96,7 +96,12 @@ tryReproduceFailureFromFuzzerInts fuzzer getExpectation fuzzerInts =
         Nothing
 
     else
-        -- Reproduce a previous failure.
+        -- When a fuzz test fails, we expose the list of integers in the
+        -- `RandomRun` that caused the failure (after shrinking) to the
+        -- runner. The runner can then store those integers, and pass them
+        -- when running the tests again. This way, a previous failure can
+        -- be reproduced quickly (no need to go through many runs plus
+        -- shrinking again).
         let
             randomRun =
                 RandomRun.fromList fuzzerInts
