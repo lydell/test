@@ -435,32 +435,54 @@ toTestsHelper tag labels test =
                             seenSkip =
                                 acc.seenSkip || sub.seenSkip
                         in
-                        case ( acc.seenOnly, sub.seenOnly ) of
-                            ( False, False ) ->
-                                { unitTests = Array.append acc.unitTests sub.unitTests
-                                , fuzzTests = Array.append acc.fuzzTests sub.fuzzTests
+                        -- If neither has seen only, use all of the tests combined.
+                        -- If both have seen only, both have already narrowed down
+                        -- their respective tests to only the marked ones, so use
+                        -- all of the tests combined in that case, too.
+                        if acc.seenOnly == sub.seenOnly then
+                            { unitTests = Array.append acc.unitTests sub.unitTests
+                            , fuzzTests = Array.append acc.fuzzTests sub.fuzzTests
+                            , seenSkip = seenSkip
+                            , seenOnly = acc.seenOnly
+                            }
+
+                        else
+                        -- If `acc` has seen only, but not `sub`,
+                        -- only use the tests from `acc`.
+                        if
+                            acc.seenOnly
+                        then
+                            -- As an optimization, if `seenSkip` is already
+                            -- the correct value, skip creating a new record.
+                            if acc.seenSkip == seenSkip then
+                                acc
+
+                            else
+                                -- Not using record update for performance.
+                                { unitTests = acc.unitTests
+                                , fuzzTests = acc.fuzzTests
                                 , seenSkip = seenSkip
-                                , seenOnly = False
+                                , seenOnly = acc.seenOnly
                                 }
 
-                            ( True, False ) ->
-                                { acc
-                                    | seenSkip = seenSkip
-                                    , seenOnly = True
-                                }
+                        else
+                        -- If `sub` has seen only, but not `acc`,
+                        -- only use the tests from `sub`.
+                        -- (This is the only remaining case.)
+                        -- As an optimization, if `seenSkip` is already
+                        -- the correct value, skip creating a new record.
+                        if
+                            sub.seenSkip == seenSkip
+                        then
+                            sub
 
-                            ( False, True ) ->
-                                { sub
-                                    | seenSkip = seenSkip
-                                    , seenOnly = True
-                                }
-
-                            ( True, True ) ->
-                                { unitTests = Array.append acc.unitTests sub.unitTests
-                                , fuzzTests = Array.append acc.fuzzTests sub.fuzzTests
-                                , seenSkip = seenSkip
-                                , seenOnly = True
-                                }
+                        else
+                            -- Not using record update for performance.
+                            { unitTests = sub.unitTests
+                            , fuzzTests = sub.fuzzTests
+                            , seenSkip = seenSkip
+                            , seenOnly = sub.seenOnly
+                            }
                     )
                     { unitTests = Array.empty
                     , fuzzTests = Array.empty
