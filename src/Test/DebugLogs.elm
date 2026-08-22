@@ -1,4 +1,4 @@
-module Test.DebugLogs exposing (DebugLogs, empty, encode, getDebugLogsBeforeFirstTestRun, isEmpty)
+module Test.DebugLogs exposing (DebugLogs, empty, encode, fromString, getDebugLogsBeforeFirstTestRun, isEmpty)
 
 {-| This is an "experts only" module that is used by test runners.
 It deals with captured debug logs, so they can be displayed nicely
@@ -24,6 +24,13 @@ type alias DebugLogs =
 empty : DebugLogs
 empty =
     Test.Internal.DebugLogs.empty
+
+
+{-| TODO
+-}
+fromString : String -> String -> DebugLogs
+fromString =
+    Test.Internal.DebugLogs.fromString
 
 
 {-| TODO

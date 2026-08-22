@@ -16,16 +16,15 @@ var _DebugLogs_mode = globalThis.__elmTestUnbufferedInitLogs ? __1_UNBUFFERED : 
 
 var _DebugLogs_logsBeforeFirstTestRun = undefined;
 
-var _DebugLogs_getDebugLogsBeforeFirstTestRun = __Scheduler_binding(
-  function(callback)
-  {
-    if (_DebugLogs_logsBeforeFirstTestRun === undefined) {
-      _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
-      _DebugLogs_logs = [];
-      _DebugLogs_used = false;
-    }
-    callback(__Scheduler_succeed(_DebugLogs_logsBeforeFirstTestRun));
-  });
+var _DebugLogs_getDebugLogsBeforeFirstTestRun = __Scheduler_binding(function(callback)
+{
+  if (_DebugLogs_logsBeforeFirstTestRun === undefined) {
+    _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
+    _DebugLogs_logs = [];
+    _DebugLogs_used = false;
+  }
+  callback(__Scheduler_succeed(_DebugLogs_logsBeforeFirstTestRun));
+});
 
 var _Test_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAction, thunk, mapper)
 {
@@ -59,6 +58,11 @@ function _DebugLogs_singleton(message)
 {
   return [message];
 }
+
+var _DebugLogs_fromString = F2(function(separator, string)
+{
+  return string.split(separator);
+});
 
 function _DebugLogs_isEmpty(logs)
 {
