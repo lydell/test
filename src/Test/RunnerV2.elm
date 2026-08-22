@@ -519,7 +519,18 @@ toTestsHelper tag labels test =
                 sub =
                     toTestsHelper tag labels subTest
             in
-            { sub | seenOnly = True }
+            -- As an optimization, if `seenOnly` is already
+            -- the correct value, skip creating a new record.
+            if sub.seenOnly then
+                sub
+
+            else
+                -- Not using record update for performance.
+                { unitTests = sub.unitTests
+                , fuzzTests = sub.fuzzTests
+                , skipCount = sub.skipCount
+                , seenOnly = True
+                }
 
         Internal.ElmTestVariant__Batch subTests ->
             subTests
