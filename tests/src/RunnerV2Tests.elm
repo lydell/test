@@ -30,7 +30,7 @@ all =
                     in
                     toTests suite
                         |> Expect.equal
-                            { seenSkip = False
+                            { skipCount = 0
                             , seenOnly = True
                             , unitTestsLabels = [ [ "three tests", "two tests", "is an only" ] ]
                             , fuzzTestsLabels = []
@@ -61,7 +61,7 @@ all =
                     in
                     toTests suite
                         |> Expect.equal
-                            { seenSkip = False
+                            { skipCount = 0
                             , seenOnly = True
                             , unitTestsLabels =
                                 [ [ "root", "B", "1" ]
@@ -86,7 +86,7 @@ all =
                     in
                     toTests suite
                         |> Expect.equal
-                            { seenSkip = True
+                            { skipCount = 1
                             , seenOnly = True
                             , unitTestsLabels = [ [ "three tests", "two tests", "fails" ] ]
                             , fuzzTestsLabels = []
@@ -106,7 +106,7 @@ all =
                     in
                     toTests suite
                         |> Expect.equal
-                            { seenSkip = True
+                            { skipCount = 2
                             , seenOnly = False
                             , unitTestsLabels = [ [ "three tests", "passes" ] ]
                             , fuzzTestsLabels = []
@@ -126,7 +126,7 @@ all =
                     in
                     toTests suite
                         |> Expect.equal
-                            { seenSkip = True
+                            { skipCount = 2
                             , seenOnly = False
                             , unitTestsLabels = [ [ "three tests", "passes" ] ]
                             , fuzzTestsLabels = []
@@ -135,7 +135,7 @@ all =
                 \_ ->
                     toTests (Test.skip <| test "passes" expectPass)
                         |> Expect.equal
-                            { seenSkip = True
+                            { skipCount = 1
                             , seenOnly = False
                             , unitTestsLabels = []
                             , fuzzTestsLabels = []
@@ -144,7 +144,7 @@ all =
                 \_ ->
                     toTests (test "passes" expectPass)
                         |> Expect.equal
-                            { seenSkip = False
+                            { skipCount = 0
                             , seenOnly = False
                             , unitTestsLabels = [ [ "passes" ] ]
                             , fuzzTestsLabels = []
@@ -232,7 +232,7 @@ all =
 toTests :
     Test
     ->
-        { seenSkip : Bool
+        { skipCount : Int
         , seenOnly : Bool
         , unitTestsLabels : List (List String)
         , fuzzTestsLabels : List (List String)
@@ -242,7 +242,7 @@ toTests test =
         tests =
             Runner.toTests test
     in
-    { seenSkip = Runner.getSeenSkip tests
+    { skipCount = Runner.getSkipCount tests
     , seenOnly = Runner.getSeenOnly tests
     , unitTestsLabels =
         Runner.getUnitTests tests

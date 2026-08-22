@@ -1,5 +1,5 @@
 module Test.RunnerV2 exposing
-    ( toTests, Tests, getUnitTests, getFuzzTests, getSeenSkip, getSeenOnly
+    ( toTests, Tests, getUnitTests, getFuzzTests, getSkipCount, getSeenOnly
     , UnitTest, getUnitTestTag, getUnitTestLabels, runUnitTest, runUnitTestWithUnbufferedLogs
     , UnitTestExpectation(..), UnitTestFailData, getUnitTestFailDescription, getUnitTestFailReason
     , FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest, runFuzzTestWithUnbufferedLogs
@@ -18,7 +18,7 @@ This module supersedes the deprecated [Test.Runner](Test.Runner) module.
 
 ## Consume tests
 
-@docs toTests, Tests, getUnitTests, getFuzzTests, getSeenSkip, getSeenOnly
+@docs toTests, Tests, getUnitTests, getFuzzTests, getSkipCount, getSeenOnly
 
 
 ## Unit Tests
@@ -62,13 +62,13 @@ import Test.Runner.Failure exposing (Reason(..))
 
   - `unitTests : Array UnitTest`
   - `fuzzTests : Array FuzzTest`
-  - `seenSkip : Bool`
+  - `skipCount : Int`
   - `seenOnly : Bool`
 
 Use the various `get*` functions to access each field.
 
 The lists of unit tests and fuzz tests only include tests that should be run,
-after taking [`skip`](Test#skip) and [`only`](Test#only) into account. The `seenSkip` and `seenOnly`
+after taking [`skip`](Test#skip) and [`only`](Test#only) into account. The `skipCount` and `seenOnly`
 fields tell if any `skip` and/or `only` reduced the number of tests returned.
 A runner could fail the test run if `skip` or `only` was used.
 
@@ -80,7 +80,7 @@ type Tests
 type alias TestsData =
     { unitTests : Array UnitTest
     , fuzzTests : Array FuzzTest
-    , seenSkip : Bool
+    , skipCount : Int
     , seenOnly : Bool
     }
 
@@ -99,11 +99,11 @@ getFuzzTests (Tests testsData) =
     testsData.fuzzTests
 
 
-{-| Get whether `skip` was used.
+{-| Get how many times `skip` was used.
 -}
-getSeenSkip : Tests -> Bool
-getSeenSkip (Tests testsData) =
-    testsData.seenSkip
+getSkipCount : Tests -> Int
+getSkipCount (Tests testsData) =
+    testsData.skipCount
 
 
 {-| Get whether `only` was used.
@@ -481,7 +481,7 @@ toTestsHelper tag labels test =
                     )
                     Array.empty
             , fuzzTests = Array.empty
-            , seenSkip = False
+            , skipCount = 0
             , seenOnly = False
             }
 
@@ -497,7 +497,7 @@ toTestsHelper tag labels test =
                         }
                     )
                     Array.empty
-            , seenSkip = False
+            , skipCount = 0
             , seenOnly = False
             }
 
@@ -510,7 +510,7 @@ toTestsHelper tag labels test =
         Internal.ElmTestVariant__Skipped subTest ->
             { unitTests = Array.empty
             , fuzzTests = Array.empty
-            , seenSkip = True
+            , skipCount = count subTest
             , seenOnly = False
             }
 
@@ -529,8 +529,8 @@ toTestsHelper tag labels test =
                             sub =
                                 toTestsHelper tag labels subTest
 
-                            seenSkip =
-                                acc.seenSkip || sub.seenSkip
+                            skipCount =
+                                acc.skipCount + sub.skipCount
                         in
                         -- If neither has seen only, use all of the tests combined.
                         -- If both have seen only, both have already narrowed down
@@ -539,7 +539,7 @@ toTestsHelper tag labels test =
                         if acc.seenOnly == sub.seenOnly then
                             { unitTests = Array.append acc.unitTests sub.unitTests
                             , fuzzTests = Array.append acc.fuzzTests sub.fuzzTests
-                            , seenSkip = seenSkip
+                            , skipCount = skipCount
                             , seenOnly = acc.seenOnly
                             }
 
@@ -549,16 +549,16 @@ toTestsHelper tag labels test =
                         if
                             acc.seenOnly
                         then
-                            -- As an optimization, if `seenSkip` is already
+                            -- As an optimization, if `skipCount` is already
                             -- the correct value, skip creating a new record.
-                            if acc.seenSkip == seenSkip then
+                            if acc.skipCount == skipCount then
                                 acc
 
                             else
                                 -- Not using record update for performance.
                                 { unitTests = acc.unitTests
                                 , fuzzTests = acc.fuzzTests
-                                , seenSkip = seenSkip
+                                , skipCount = skipCount
                                 , seenOnly = acc.seenOnly
                                 }
 
@@ -566,10 +566,10 @@ toTestsHelper tag labels test =
                         -- If `sub` has seen only, but not `acc`,
                         -- only use the tests from `sub`.
                         -- (This is the only remaining case.)
-                        -- As an optimization, if `seenSkip` is already
+                        -- As an optimization, if `skipCount` is already
                         -- the correct value, skip creating a new record.
                         if
-                            sub.seenSkip == seenSkip
+                            sub.skipCount == skipCount
                         then
                             sub
 
@@ -577,15 +577,40 @@ toTestsHelper tag labels test =
                             -- Not using record update for performance.
                             { unitTests = sub.unitTests
                             , fuzzTests = sub.fuzzTests
-                            , seenSkip = seenSkip
+                            , skipCount = skipCount
                             , seenOnly = sub.seenOnly
                             }
                     )
                     { unitTests = Array.empty
                     , fuzzTests = Array.empty
-                    , seenSkip = False
+                    , skipCount = 0
                     , seenOnly = False
                     }
+
+
+count : Test -> Int
+count test =
+    case Internal.unwrapTestVariant test of
+        Internal.ElmTestVariant__UnitTest _ ->
+            1
+
+        Internal.ElmTestVariant__FuzzTest _ _ ->
+            1
+
+        Internal.ElmTestVariant__Labeled _ subTest ->
+            count subTest
+
+        Internal.ElmTestVariant__Tagged _ subTest ->
+            count subTest
+
+        Internal.ElmTestVariant__Skipped subTest ->
+            count subTest
+
+        Internal.ElmTestVariant__Only subTest ->
+            count subTest
+
+        Internal.ElmTestVariant__Batch subTests ->
+            List.foldl (\subTest acc -> count subTest + acc) 0 subTests
 
 
 toUnitTestExpectation : Expectation -> UnitTestExpectation
