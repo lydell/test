@@ -1,9 +1,9 @@
 module Test.RunnerV2 exposing
     ( toTests, Tests, getUnitTests, getFuzzTests, getSeenSkip, getSeenOnly
-    , UnitTest, getUnitTestTag, getUnitTestLabels, runUnitTest
+    , UnitTest, getUnitTestTag, getUnitTestLabels, runUnitTest, runUnitTestWithUnbufferedLogs
     , UnitTestExpectation(..), UnitTestFailData, getUnitTestFailDescription, getUnitTestFailReason
-    , FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest
-    , FuzzTestExpectation(..), getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts, rerunFuzzTestFailure
+    , FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest, runFuzzTestWithUnbufferedLogs
+    , FuzzTestExpectation(..), getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts
     , identifyTest, tagTest
     )
 
@@ -22,14 +22,14 @@ This module supersedes the deprecated [Test.Runner](./Runner) module.
 
 ## Unit Tests
 
-@docs UnitTest, getUnitTestTag, getUnitTestLabels, runUnitTest
+@docs UnitTest, getUnitTestTag, getUnitTestLabels, runUnitTest, runUnitTestWithUnbufferedLogs
 @docs UnitTestExpectation, UnitTestFailData, getUnitTestFailDescription, getUnitTestFailReason
 
 
 ## Fuzz Tests
 
-@docs FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest
-@docs FuzzTestExpectation, getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts, rerunFuzzTestFailure
+@docs FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest, runFuzzTestWithUnbufferedLogs
+@docs FuzzTestExpectation, getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts
 
 
 ## Runner test operations
@@ -43,9 +43,11 @@ import Random
 import RandomRun exposing (RandomRun)
 import Task exposing (Task)
 import Test exposing (Test)
+import Test.DebugLogs exposing (DebugLogs)
 import Test.Distribution exposing (DistributionReport(..))
 import Test.Expectation exposing (Expectation(..))
 import Test.Internal as Internal
+import Test.Internal.DebugLogs
 import Test.Runner.Failure exposing (Reason(..))
 
 
@@ -121,7 +123,7 @@ type UnitTest
     = UnitTest
         { tag : String
         , labels : List String
-        , thunk : () -> UnitTestExpectation
+        , thunk : () -> Expectation
         }
 
 
@@ -139,11 +141,46 @@ getUnitTestLabels (UnitTest data) =
     data.labels
 
 
-{-| Run the unit test. Returns the test result, and the duration it took to run in milliseconds.
+{-| Run the unit test. Returns the test result, the duration it took to run in milliseconds,
+and captured debug logs.
 -}
-runUnitTest : UnitTest -> Task x ( UnitTestExpectation, Float )
+runUnitTest : UnitTest -> Task x ( UnitTestExpectation, Float, DebugLogs )
 runUnitTest (UnitTest data) =
-    Internal.runTimed data.thunk
+    Task.succeed ()
+        |> Task.andThen
+            (\() ->
+                Test.Internal.DebugLogs.clearLogs ()
+                    |> (\() ->
+                            Internal.runTimed data.thunk
+                                |> Task.map
+                                    (\( expectation, duration ) ->
+                                        ( toUnitTestExpectation expectation, duration, Test.Internal.DebugLogs.getLogs () )
+                                    )
+                       )
+            )
+
+
+{-| Like `runUnitTest`, but if `Debug.log` is used it writes directly to the console
+instead of buffering. This is useful if a test ends up in an infinite loop and you would
+like to see logs as the test runs.
+
+The returned `Bool` says whether `Debug.log` was used at all while running the test.
+
+-}
+runUnitTestWithUnbufferedLogs : UnitTest -> Task x ( UnitTestExpectation, Float, Bool )
+runUnitTestWithUnbufferedLogs (UnitTest data) =
+    Task.succeed ()
+        |> Task.andThen
+            (\() ->
+                Test.Internal.DebugLogs.setUnbuffered True
+                    |> (\() ->
+                            Internal.runTimed data.thunk
+                                |> Task.map
+                                    (\( expectation, duration ) ->
+                                        ( toUnitTestExpectation expectation, duration, Test.Internal.DebugLogs.getUsed () )
+                                    )
+                       )
+            )
 
 
 {-| A fuzz test. It’s similar to a unit test but has more data, and running
@@ -164,7 +201,7 @@ type FuzzTest
         { tag : String
         , labels : List String
         , runs : Maybe Int
-        , thunk : Random.Seed -> Int -> List Int -> FuzzTestExpectation
+        , thunk : Random.Seed -> Int -> List Int -> Test.Expectation.FuzzTestExpectation
         }
 
 
@@ -189,7 +226,15 @@ getFuzzTestRuns (FuzzTest data) =
     data.runs
 
 
-{-| Run the fuzz test. Returns the test result, and the duration it took to run in milliseconds.
+{-| Run the fuzz test. Returns the test result, and the duration it took to run in milliseconds,
+and captured debug logs. When it comes to the debug logs, you need to know:
+
+  - If the test failed, the debug logs are from the run that caused the returned test failure.
+
+  - If the test passed, the debug logs are either empty, or a hardcoded message saying:
+
+    > For passing fuzz tests, Debug.log is not shown, since showing logs from lots of runs is pretty confusing.
+    > Tip: Use Debug.todo to fail a test from anywhere if you want some logs to appear.
 
 It requires a few arguments:
 
@@ -202,9 +247,73 @@ It requires a few arguments:
     with a regular random run.
 
 -}
-runFuzzTest : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float )
+runFuzzTest : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float, DebugLogs )
 runFuzzTest (FuzzTest data) seed runs fuzzerInts =
-    Internal.runTimed (\() -> data.thunk seed runs fuzzerInts)
+    Task.succeed ()
+        |> Task.andThen
+            (\() ->
+                Test.Internal.DebugLogs.setPaused True
+                    |> (\() ->
+                            Internal.runTimed (\() -> data.thunk seed runs fuzzerInts)
+                                |> Task.map
+                                    (\( expectation, duration ) ->
+                                        case expectation of
+                                            Test.Expectation.FuzzTestPass distributionReport ->
+                                                ( FuzzTestPass (FuzzTestPassData distributionReport)
+                                                , duration
+                                                , if Test.Internal.DebugLogs.getUsed () then
+                                                    Test.Internal.DebugLogs.noDebugLogsForPassingFuzzTests
+
+                                                  else
+                                                    Test.Internal.DebugLogs.empty
+                                                )
+
+                                            Test.Expectation.FuzzTestFail failData ->
+                                                Test.Internal.DebugLogs.clearLogs ()
+                                                    |> (\() ->
+                                                            failData.rerunFailure ()
+                                                                |> (\() ->
+                                                                        ( FuzzTestFail
+                                                                            (FuzzTestFailData
+                                                                                { description = failData.description
+                                                                                , reason = failData.reason
+                                                                                , distributionReport = failData.distributionReport
+                                                                                , given = failData.given
+                                                                                , fuzzerInts = RandomRun.toList failData.randomRun
+                                                                                }
+                                                                            )
+                                                                        , duration
+                                                                        , Test.Internal.DebugLogs.getLogs ()
+                                                                        )
+                                                                   )
+                                                       )
+                                    )
+                       )
+            )
+
+
+{-| Like `runFuzzTest`, but if `Debug.log` is used it writes directly to the console
+instead of buffering. This is useful if a test ends up in an infinite loop and you would
+like to see logs as the test runs, or if you’d like to see logs from all the runs of the
+test, not just the failing one (if any).
+
+The returned `Bool` says whether `Debug.log` was used at all while running the test.
+
+-}
+runFuzzTestWithUnbufferedLogs : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float, Bool )
+runFuzzTestWithUnbufferedLogs (FuzzTest data) seed runs fuzzerInts =
+    Task.succeed ()
+        |> Task.andThen
+            (\() ->
+                Test.Internal.DebugLogs.setUnbuffered True
+                    |> (\() ->
+                            Internal.runTimed (\() -> data.thunk seed runs fuzzerInts)
+                                |> Task.map
+                                    (\( expectation, duration ) ->
+                                        ( toFuzzTestExpectation expectation, duration, Test.Internal.DebugLogs.getUsed () )
+                                    )
+                       )
+            )
 
 
 {-| A unit test either passes, or fails with a description and reason.
@@ -283,10 +392,8 @@ getFuzzTestPassDistributionReport (FuzzTestPassData distributionReport) =
     A fuzz test can in unusual circumstances fail to even produce a `given` value, which is why it is `Maybe`.
   - `fuzzerInts : List Int`. This is the internal fuzzer state that produced `given`. A runner can pass this
     to [runFuzzTest](#runFuzzTest) to reproduce a previous failure.
-  - `rerunFailure` is a function that runs the test function again with the input that
-    caused the failure. Runners can use this to capture `Debug.log` calls of the failing run.
 
-Use the various `getFuzzTestFail*` functions to access each field, as well as [`rerunFuzzTestFailure`](#rerunFuzzTestFailure) for running the failing run again.
+Use the various `getFuzzTestFail*` functions to access each field.
 
 -}
 type FuzzTestFailData
@@ -296,7 +403,6 @@ type FuzzTestFailData
         , distributionReport : DistributionReport
         , given : Maybe String
         , fuzzerInts : List Int
-        , rerunFailure : () -> ()
         }
 
 
@@ -342,16 +448,6 @@ getFuzzTestFailFuzzerInts (FuzzTestFailData data) =
     data.fuzzerInts
 
 
-{-| Rerun the test with the input that caused the failure.
-
-Runners can use this to capture `Debug.log` calls of the failing run.
-
--}
-rerunFuzzTestFailure : FuzzTestFailData -> ()
-rerunFuzzTestFailure (FuzzTestFailData data) =
-    data.rerunFailure ()
-
-
 {-| This lets runners tag tests with an identifier, which can be used to implement
 caching of test results.
 -}
@@ -392,7 +488,7 @@ toTestsHelper tag labels test =
                     (UnitTest
                         { tag = tag
                         , labels = labels
-                        , thunk = \() -> thunk () |> toUnitTestExpectation
+                        , thunk = thunk
                         }
                     )
                     Array.empty
@@ -408,7 +504,7 @@ toTestsHelper tag labels test =
                     (FuzzTest
                         { tag = tag
                         , labels = labels
-                        , thunk = \seed runs fuzzerInts -> thunk seed runs fuzzerInts |> toFuzzTestExpectation
+                        , thunk = thunk
                         , runs = maybeRuns
                         }
                     )
@@ -528,6 +624,5 @@ toFuzzTestExpectation expectation =
                     , distributionReport = data.distributionReport
                     , given = data.given
                     , fuzzerInts = RandomRun.toList data.randomRun
-                    , rerunFailure = data.rerunFailure
                     }
                 )
