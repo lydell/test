@@ -1,4 +1,4 @@
-module Test.Internal.DebugLogs exposing (DebugLogs(..), Mode(..), empty, encode, fromString, getDebugLogsBeforeFirstTestRun, isEmpty, modeCollect, modePaused, modeUnbuffered, noDebugLogsForPassingFuzzTests, rerunFailureToCollectDebugLogs, runTestWithDurationAndCollectDebugLogs)
+module Test.Internal.DebugLogs exposing (DebugLogs(..), Mode(..), empty, encode, fromString, getDebugLogsBeforeFirstTestRun, isEmpty, modeCollect, modeConsoleLog, modeIgnore, noDebugLogsForPassingFuzzTests, rerunFailureToCollectDebugLogs, runTestWithDurationAndCollectDebugLogs)
 
 import Elm.Kernel.DebugLogs
 import Json.Encode
@@ -13,19 +13,19 @@ type Mode
     = Mode
 
 
-modeUnbuffered : Mode
-modeUnbuffered =
-    Elm.Kernel.DebugLogs.modeUnbuffered
-
-
-modePaused : Mode
-modePaused =
-    Elm.Kernel.DebugLogs.modePaused
+modeConsoleLog : Mode
+modeConsoleLog =
+    Elm.Kernel.DebugLogs.modeConsoleLog
 
 
 modeCollect : Mode
 modeCollect =
     Elm.Kernel.DebugLogs.modeCollect
+
+
+modeIgnore : Mode
+modeIgnore =
+    Elm.Kernel.DebugLogs.modeIgnore
 
 
 getDebugLogsBeforeFirstTestRun : Task x DebugLogs

@@ -6,13 +6,13 @@ import Elm.Kernel.Scheduler exposing (binding, succeed)
 
 */
 
-var _DebugLogs_modeUnbuffered = __1_UNBUFFERED;
-var _DebugLogs_modePaused = __1_PAUSED;
+var _DebugLogs_modeConsoleLog = __1_CONSOLE_LOG;
 var _DebugLogs_modeCollect = __1_COLLECT;
+var _DebugLogs_modeIgnore = __1_IGNORE;
 
 var _DebugLogs_logs = [];
 var _DebugLogs_used = false;
-var _DebugLogs_mode = globalThis.__elmTestUnbufferedInitLogs ? __1_UNBUFFERED : __1_COLLECT;
+var _DebugLogs_mode = globalThis.__elmTestUnbufferedInitLogs ? __1_CONSOLE_LOG : __1_COLLECT;
 
 var _DebugLogs_logsBeforeFirstTestRun = undefined;
 
@@ -78,14 +78,14 @@ var _Debug_log = F2(function(tag, value)
 {
   _DebugLogs_used = true;
   switch (_DebugLogs_mode) {
-    case __1_UNBUFFERED:
+    case __1_CONSOLE_LOG:
       console.error(tag + ': ' + __Debug_toString(value));
       break;
     case __1_COLLECT:
       _DebugLogs_logs.push(tag + ': ' + __Debug_toString(value));
       break;
     default:
-      // __1_PAUSED: Do nothing.
+      // __1_IGNORE: Do nothing.
   }
   return value;
 });

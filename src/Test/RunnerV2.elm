@@ -164,7 +164,7 @@ The returned `Bool` says whether `Debug.log` was used at all while running the t
 runUnitTestWithUnbufferedLogs : UnitTest -> Task x ( UnitTestExpectation, Float, Bool )
 runUnitTestWithUnbufferedLogs (UnitTest data) =
     Test.Internal.DebugLogs.runTestWithDurationAndCollectDebugLogs
-        Test.Internal.DebugLogs.modeUnbuffered
+        Test.Internal.DebugLogs.modeConsoleLog
         data.thunk
         (\expectation duration _ debugLogUsed ->
             ( toUnitTestExpectation expectation, duration, debugLogUsed )
@@ -238,7 +238,7 @@ It requires a few arguments:
 runFuzzTest : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float, DebugLogs )
 runFuzzTest (FuzzTest data) seed runs fuzzerInts =
     Test.Internal.DebugLogs.runTestWithDurationAndCollectDebugLogs
-        Test.Internal.DebugLogs.modePaused
+        Test.Internal.DebugLogs.modeIgnore
         (\() -> data.thunk seed runs fuzzerInts)
         (\expectation duration _ debugLogUsed ->
             case expectation of
@@ -279,7 +279,7 @@ The returned `Bool` says whether `Debug.log` was used at all while running the t
 runFuzzTestWithUnbufferedLogs : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float, Bool )
 runFuzzTestWithUnbufferedLogs (FuzzTest data) seed runs fuzzerInts =
     Test.Internal.DebugLogs.runTestWithDurationAndCollectDebugLogs
-        Test.Internal.DebugLogs.modeUnbuffered
+        Test.Internal.DebugLogs.modeConsoleLog
         (\() -> data.thunk seed runs fuzzerInts)
         (\expectation duration _ debugLogUsed ->
             ( toFuzzTestExpectation expectation, duration, debugLogUsed )
