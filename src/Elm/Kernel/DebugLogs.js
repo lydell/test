@@ -27,7 +27,7 @@ var _DebugLogs_getDebugLogsBeforeFirstTestRun = __Scheduler_binding(function(cal
   callback(__Scheduler_succeed(_DebugLogs_logsBeforeFirstTestRun));
 });
 
-var _DebugLogs_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAction, thunk, mapper)
+var _DebugLogs_runTestWithDurationAndCollectDebugLogs = F3(function(mode, thunk, mapper)
 {
   return __Scheduler_binding(function(callback)
   {
@@ -36,7 +36,7 @@ var _DebugLogs_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAc
     }
     _DebugLogs_logs = '';
     _DebugLogs_used = false;
-    _DebugLogs_mode = preTestRunAction;
+    _DebugLogs_mode = mode;
     var start = performance.now();
     var value = thunk(__Utils_Tuple0);
     var duration = performance.now() - start;
