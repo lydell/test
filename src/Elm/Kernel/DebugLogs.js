@@ -14,6 +14,8 @@ var _DebugLogs_modeIgnore = __1_IGNORE;
 var _DebugLogs_logs = '';
 var _DebugLogs_used = false;
 var _DebugLogs_mode = globalThis.elmTestPrintDebugLogsBeforeFirstTestToConsole ? __1_CONSOLE_LOG : __1_COLLECT;
+// Note: Always reset the mode to __1_CONSOLE_LOG, so that `Debug.log` used to debug a test runner
+// has a higher chance of showing up out of the box.
 
 var _DebugLogs_logsBeforeFirstTestRun = undefined;
 
@@ -23,6 +25,7 @@ var _DebugLogs_getDebugLogsBeforeFirstTestRun = __Scheduler_binding(function(cal
     _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
     _DebugLogs_logs = '';
     _DebugLogs_used = false;
+    _DebugLogs_mode = __1_CONSOLE_LOG;
   }
   callback(__Scheduler_succeed(_DebugLogs_logsBeforeFirstTestRun));
 });
@@ -40,6 +43,7 @@ var _DebugLogs_runTestWithDurationAndCollectDebugLogs = F3(function(mode, thunk,
     var start = performance.now();
     var value = thunk(__Utils_Tuple0);
     var duration = performance.now() - start;
+    _DebugLogs_mode = __1_CONSOLE_LOG;
     callback(__Scheduler_succeed(A4(mapper, value, duration, _DebugLogs_logs, _DebugLogs_used)));
   });
 });
@@ -50,6 +54,7 @@ function _DebugLogs_rerunFailureToCollectDebugLogs(rerunFailure)
   _DebugLogs_used = false;
   _DebugLogs_mode = __1_COLLECT;
   rerunFailure(__Utils_Tuple0);
+  _DebugLogs_mode = __1_CONSOLE_LOG;
   return _DebugLogs_logs;
 }
 
