@@ -148,6 +148,9 @@ getUnitTestLabels (UnitTest data) =
 
 {-| Run the unit test. Returns the test result, the duration it took to run in milliseconds,
 and captured debug logs.
+
+The debug logs are joined to one string with a newline as separator and with a trailing newline.
+
 -}
 runUnitTest : UnitTest -> Task x ( UnitTestExpectation, Float, String )
 runUnitTest (UnitTest data) =
@@ -232,6 +235,8 @@ and captured debug logs. When it comes to the debug logs, you need to know:
 
     > For passing fuzz tests, Debug.log is not shown, since showing logs from lots of runs is pretty confusing.
     > Tip: Use Debug.todo to fail a test from anywhere if you want some logs to appear.
+
+  - The debug logs are joined to one string with a newline as separator and with a trailing newline.
 
 It requires a few arguments:
 
