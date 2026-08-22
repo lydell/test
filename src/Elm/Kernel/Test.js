@@ -1,22 +1,9 @@
 /*
 
-import Elm.Kernel.Scheduler exposing (binding, succeed)
-import Elm.Kernel.Utils exposing (Tuple0, Tuple2)
 import Maybe exposing (Just, Nothing)
 import Result exposing (Err, Ok)
 
 */
-
-function _Test_runTimed(thunk)
-{
-  return __Scheduler_binding(function(callback)
-  {
-    var start = performance.now();
-    var value = thunk(__Utils_Tuple0);
-    var duration = performance.now() - start;
-    callback(__Scheduler_succeed(__Utils_Tuple2(value, duration)));
-  });
-}
 
 var _Test_runWithTryCatch = F2(function(thunk, a)
 {

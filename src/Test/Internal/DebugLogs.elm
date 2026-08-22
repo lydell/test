@@ -1,4 +1,4 @@
-module Test.Internal.DebugLogs exposing (DebugLogs(..), clearLogs, empty, encode, getDebugLogsBeforeFirstTestRun, getLogs, getUsed, isEmpty, noDebugLogsForPassingFuzzTests, setPaused, setUnbuffered)
+module Test.Internal.DebugLogs exposing (DebugLogs(..), Mode(..), empty, encode, getDebugLogsBeforeFirstTestRun, isEmpty, modeCollect, modePaused, modeUnbuffered, noDebugLogsForPassingFuzzTests, rerunFailureToCollectDebugLogs, runTestWithDurationAndCollectDebugLogs)
 
 import Elm.Kernel.DebugLogs
 import Json.Encode
@@ -9,34 +9,38 @@ type DebugLogs
     = DebugLogs
 
 
-setUnbuffered : Bool -> ()
-setUnbuffered =
-    Elm.Kernel.DebugLogs.setUnbuffered
+type Mode
+    = Mode
 
 
-setPaused : Bool -> ()
-setPaused =
-    Elm.Kernel.DebugLogs.setPaused
+modeUnbuffered : Mode
+modeUnbuffered =
+    Elm.Kernel.DebugLogs.modeUnbuffered
 
 
-clearLogs : () -> ()
-clearLogs =
-    Elm.Kernel.DebugLogs.clearLogs
+modePaused : Mode
+modePaused =
+    Elm.Kernel.DebugLogs.modePaused
 
 
-getLogs : () -> DebugLogs
-getLogs =
-    Elm.Kernel.DebugLogs.getLogs
+modeCollect : Mode
+modeCollect =
+    Elm.Kernel.DebugLogs.modeCollect
 
 
-getUsed : () -> Bool
-getUsed =
-    Elm.Kernel.DebugLogs.getUsed
+getDebugLogsBeforeFirstTestRun : Task x DebugLogs
+getDebugLogsBeforeFirstTestRun =
+    Elm.Kernel.DebugLogs.getDebugLogsBeforeFirstTestRun
 
 
-isEmpty : DebugLogs -> Bool
-isEmpty =
-    Elm.Kernel.DebugLogs.isEmpty
+runTestWithDurationAndCollectDebugLogs : Mode -> (() -> a) -> (a -> Float -> DebugLogs -> Bool -> b) -> Task x b
+runTestWithDurationAndCollectDebugLogs =
+    Elm.Kernel.DebugLogs.runTestWithDurationAndCollectDebugLogs
+
+
+rerunFailureToCollectDebugLogs : (() -> a) -> DebugLogs
+rerunFailureToCollectDebugLogs =
+    Elm.Kernel.DebugLogs.rerunFailureToCollectDebugLogs
 
 
 empty : DebugLogs
@@ -46,15 +50,14 @@ empty =
 
 noDebugLogsForPassingFuzzTests : DebugLogs
 noDebugLogsForPassingFuzzTests =
-    -- TODO: Should not be empty.
-    empty
+    Elm.Kernel.DebugLogs.singleton "For passing fuzz tests, Debug.log is not shown, since showing logs from lots of runs is pretty confusing. Tip: Use Debug.todo to fail a test from anywhere if you want some logs to appear."
+
+
+isEmpty : DebugLogs -> Bool
+isEmpty =
+    Elm.Kernel.DebugLogs.isEmpty
 
 
 encode : DebugLogs -> Json.Encode.Value
 encode =
     Elm.Kernel.DebugLogs.encode
-
-
-getDebugLogsBeforeFirstTestRun : Task x DebugLogs
-getDebugLogsBeforeFirstTestRun =
-    Elm.Kernel.DebugLogs.getDebugLogsBeforeFirstTestRun

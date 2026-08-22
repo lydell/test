@@ -1,4 +1,4 @@
-module Test.Internal exposing (Test, TestVariant(..), blankDescriptionFailure, duplicatedName, failNow, identifyTest, runTimed, toString, unwrapTestVariant, wrapTestVariant, wrapWithTryCatch)
+module Test.Internal exposing (Test, TestVariant(..), blankDescriptionFailure, duplicatedName, failNow, identifyTest, toString, unwrapTestVariant, wrapTestVariant, wrapWithTryCatch)
 
 import Elm.Kernel.Test
 import Random
@@ -121,11 +121,6 @@ duplicatedName tests =
 toString : a -> String
 toString =
     Elm.Kernel.Debug.toString
-
-
-runTimed : (() -> a) -> Task x ( a, Float )
-runTimed =
-    Elm.Kernel.Test.runTimed
 
 
 runWithTryCatch : (a -> b) -> a -> Result String b

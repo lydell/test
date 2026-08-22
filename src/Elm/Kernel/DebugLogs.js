@@ -6,42 +6,58 @@ import Elm.Kernel.Scheduler exposing (binding, succeed)
 
 */
 
-var _DebugLogs_empty = [];
+var _DebugLogs_modeUnbuffered = __1_UNBUFFERED;
+var _DebugLogs_modePaused = __1_PAUSED;
+var _DebugLogs_modeCollect = __1_COLLECT;
+
 var _DebugLogs_logs = [];
-var _DebugLogs_logsBeforeFirstTestRun = undefined;
-var _DebugLogs_unbuffered = globalThis.__elmTestUnbufferedInitLogs;
 var _DebugLogs_used = false;
-var _DebugLogs_paused = false;
+var _DebugLogs_mode = globalThis.__elmTestUnbufferedInitLogs ? __1_UNBUFFERED : __1_COLLECT;
 
-function _DebugLogs_setUnbuffered(unbuffered)
-{
-  _DebugLogs_unbuffered = unbuffered;
-}
+var _DebugLogs_logsBeforeFirstTestRun = undefined;
 
-function _DebugLogs_setPaused(paused)
-{
-  _DebugLogs_paused = paused;
-}
+var _DebugLogs_getDebugLogsBeforeFirstTestRun = __Scheduler_binding(
+  function(callback)
+  {
+    if (_DebugLogs_logsBeforeFirstTestRun === undefined) {
+      _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
+      _DebugLogs_logs = [];
+      _DebugLogs_used = false;
+    }
+    callback(__Scheduler_succeed(_DebugLogs_logsBeforeFirstTestRun));
+  });
 
-function _DebugLogs_clearLogs()
+var _Test_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAction, thunk, mapper)
 {
-  if (_DebugLogs_logsBeforeFirstTestRun === undefined) {
-    _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
-  }
+  return __Scheduler_binding(function(callback)
+  {
+    if (_DebugLogs_logsBeforeFirstTestRun === undefined) {
+      _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
+    }
+    _DebugLogs_logs = [];
+    _DebugLogs_used = false;
+    _DebugLogs_mode = preTestRunAction;
+    var start = performance.now();
+    var value = thunk(__Utils_Tuple0);
+    var duration = performance.now() - start;
+    callback(__Scheduler_succeed(A4(mapper, value, duration, _DebugLogs_logs, _DebugLogs_used)));
+  });
+});
+
+function _Test_rerunFailureToCollectDebugLogs(rerunFailure)
+{
   _DebugLogs_logs = [];
   _DebugLogs_used = false;
-  _DebugLogs_unbuffered = false;
-  _DebugLogs_paused = false;
-}
-
-function _DebugLogs_getLogs()
-{
+  _DebugLogs_mode = __1_COLLECT;
+  rerunFailure(__Utils_Tuple0);
   return _DebugLogs_logs;
 }
 
-function _DebugLogs_getUsed()
+var _DebugLogs_empty = [];
+
+function _DebugLogs_singleton(message)
 {
-  return _DebugLogs_used;
+  return [message];
 }
 
 function _DebugLogs_isEmpty(logs)
@@ -54,25 +70,18 @@ function _DebugLogs_encode(logs)
   return __Json_wrap(logs);
 }
 
-function _DebugLogs_getDebugLogsBeforeFirstTestRun()
-{
-  return __Scheduler_binding(function(callback)
-  {
-    if (_DebugLogs_logsBeforeFirstTestRun === undefined) {
-      _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
-      _DebugLogs_logs = [];
-    }
-    callback(__Scheduler_succeed(_DebugLogs_logsBeforeFirstTestRun));
-  });
-}
-
 var _Debug_log = F2(function(tag, value)
 {
   _DebugLogs_used = true;
-  if (_DebugLogs_unbuffered) {
-    console.error(tag + ': ' + __Debug_toString(value));
-  } else if (!_DebugLogs_paused) {
-    _DebugLogs_logs.push(tag + ': ' + __Debug_toString(value));
+  switch (_DebugLogs_mode) {
+    case __1_UNBUFFERED:
+      console.error(tag + ': ' + __Debug_toString(value));
+      break;
+    case __1_COLLECT:
+      _DebugLogs_logs.push(tag + ': ' + __Debug_toString(value));
+      break;
+    default:
+      // __1_PAUSED: Do nothing.
   }
   return value;
 });

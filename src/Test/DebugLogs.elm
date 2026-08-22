@@ -21,6 +21,13 @@ type alias DebugLogs =
 
 {-| TODO
 -}
+empty : DebugLogs
+empty =
+    Test.Internal.DebugLogs.empty
+
+
+{-| TODO
+-}
 isEmpty : DebugLogs -> Bool
 isEmpty =
     Test.Internal.DebugLogs.isEmpty
@@ -31,13 +38,6 @@ isEmpty =
 encode : DebugLogs -> Json.Encode.Value
 encode =
     Test.Internal.DebugLogs.encode
-
-
-{-| TODO
--}
-empty : DebugLogs
-empty =
-    Test.Internal.DebugLogs.empty
 
 
 {-| TODO
