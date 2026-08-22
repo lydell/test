@@ -3,6 +3,7 @@
 import Elm.Kernel.Debug exposing (toString)
 import Elm.Kernel.Json exposing (wrap)
 import Elm.Kernel.Scheduler exposing (binding, succeed)
+import Elm.Kernel.Utils exposing (Tuple0)
 
 */
 
@@ -12,7 +13,7 @@ var _DebugLogs_modeIgnore = __1_IGNORE;
 
 var _DebugLogs_logs = [];
 var _DebugLogs_used = false;
-var _DebugLogs_mode = globalThis.__elmTestUnbufferedInitLogs ? __1_CONSOLE_LOG : __1_COLLECT;
+var _DebugLogs_mode = globalThis.elmTestPrintDebugLogsBeforeFirstTestToConsole ? __1_CONSOLE_LOG : __1_COLLECT;
 
 var _DebugLogs_logsBeforeFirstTestRun = undefined;
 
@@ -26,7 +27,7 @@ var _DebugLogs_getDebugLogsBeforeFirstTestRun = __Scheduler_binding(function(cal
   callback(__Scheduler_succeed(_DebugLogs_logsBeforeFirstTestRun));
 });
 
-var _Test_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAction, thunk, mapper)
+var _DebugLogs_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAction, thunk, mapper)
 {
   return __Scheduler_binding(function(callback)
   {
@@ -43,7 +44,7 @@ var _Test_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAction,
   });
 });
 
-function _Test_rerunFailureToCollectDebugLogs(rerunFailure)
+function _DebugLogs_rerunFailureToCollectDebugLogs(rerunFailure)
 {
   _DebugLogs_logs = [];
   _DebugLogs_used = false;

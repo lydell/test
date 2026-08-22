@@ -4,7 +4,7 @@ module Test.DebugLogs exposing (DebugLogs, empty, encode, fromString, getDebugLo
 It deals with captured debug logs, so they can be displayed nicely
 together with the test they came from.
 
-@docs TODO
+@docs DebugLogs, empty, encode, fromString, getDebugLogsBeforeFirstTestRun, isEmpty
 
 -}
 
@@ -47,9 +47,30 @@ encode =
     Test.Internal.DebugLogs.encode
 
 
-{-| TODO
+{-| It’s possible to write code like this:
 
-If you define `globalThis.__elmTestUnbufferedInitLogs` blah
+    defaultShape =
+        makeShape 3
+            |> Debug.log "shape"
+
+    myTest =
+        test "my test" <|
+            \() ->
+                defaultShape.sides
+                    |> Expect.equal 3
+
+In this case, `defaultShape` will be evaluated before the test is run!
+This is due to Elm being an eager language and what the generated JavaScript looks like.
+
+This means that when a test runner starts running its Elm code, there might already
+be a few debug logs made. This task lets you retrieve them.
+
+If you set `globalThis.elmTestPrintDebugLogsBeforeFirstTestToConsole` to a truthy
+value, these debug logs will be printed to the console, and the returned `DebugLogs`
+here will be empty. Runners might want to do this when using the
+[runUnitTestWithUnbufferedLogs](Test.RunnerV2#runUnitTestWithUnbufferedLogs) and
+[runFuzzTestWithUnbufferedLogs](Test.RunnerV2#runFuzzTestWithUnbufferedLogs) functions,
+to consistently print all debug logs to the console.
 
 -}
 getDebugLogsBeforeFirstTestRun : Task x DebugLogs

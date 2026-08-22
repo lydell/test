@@ -6,7 +6,7 @@ module Test.Runner exposing
     , Simplifiable, fuzz, simplify
     )
 
-{-| **DEPRECATED.** This module has been superseded by the [Test.RunnerV2](./RunnerV2) module.
+{-| **DEPRECATED.** This module has been superseded by the [Test.RunnerV2](Test.RunnerV2) module.
 
 This is an "experts only" module that exposes functions needed to run and
 display tests. A typical user will use an existing runner library for Node or

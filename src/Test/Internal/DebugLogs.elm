@@ -55,7 +55,7 @@ noDebugLogsForPassingFuzzTests =
 
 fromString : String -> String -> DebugLogs
 fromString =
-    Elm.Kernel.DebugLogs.empty fromString
+    Elm.Kernel.DebugLogs.fromString
 
 
 isEmpty : DebugLogs -> Bool

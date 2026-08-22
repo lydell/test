@@ -12,7 +12,7 @@ A typical user will use an existing runner library for Node or the browser,
 which is implemented using this interface. A list of these runners
 can be found in the [README](.).
 
-This module supersedes the deprecated [Test.Runner](./Runner) module.
+This module supersedes the deprecated [Test.Runner](Test.Runner) module.
 
 
 ## Consume tests

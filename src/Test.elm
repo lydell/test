@@ -32,8 +32,8 @@ import Test.Internal as Internal
 import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
 
 
-{-| A test which has yet to be evaluated. When evaluated, it produces one
-or more [`Expectation`](../Expect#Expectation)s.
+{-| A test which has yet to be evaluated. When evaluated, it produces an
+[`Expectation`](Expect#Expectation).
 
 See [`test`](#test) and [`fuzz`](#fuzz) for some ways to create a `Test`.
 
@@ -145,7 +145,7 @@ describe untrimmedDesc tests =
 
 
 {-| Return a [`Test`](#Test) that evaluates a single
-[`Expectation`](../Expect#Expectation).
+[`Expectation`](Expect#Expectation).
 
     import Expect
     import Test exposing (test)
