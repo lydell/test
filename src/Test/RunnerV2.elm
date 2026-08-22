@@ -5,6 +5,7 @@ module Test.RunnerV2 exposing
     , FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest, runFuzzTestWithUnbufferedLogs
     , FuzzTestExpectation(..), getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts
     , identifyTest, tagTest
+    , getDebugLogsBeforeFirstTestRun
     )
 
 {-| This is an "experts only" module that exposes functions needed to run tests.
@@ -36,6 +37,11 @@ This module supersedes the deprecated [Test.Runner](Test.Runner) module.
 
 @docs identifyTest, tagTest
 
+
+## Debug logs
+
+@docs getDebugLogsBeforeFirstTestRun
+
 -}
 
 import Array exposing (Array)
@@ -43,7 +49,6 @@ import Random
 import RandomRun exposing (RandomRun)
 import Task exposing (Task)
 import Test exposing (Test)
-import Test.DebugLogs exposing (DebugLogs)
 import Test.Distribution exposing (DistributionReport(..))
 import Test.Expectation exposing (Expectation(..))
 import Test.Internal as Internal
@@ -144,7 +149,7 @@ getUnitTestLabels (UnitTest data) =
 {-| Run the unit test. Returns the test result, the duration it took to run in milliseconds,
 and captured debug logs.
 -}
-runUnitTest : UnitTest -> Task x ( UnitTestExpectation, Float, DebugLogs )
+runUnitTest : UnitTest -> Task x ( UnitTestExpectation, Float, String )
 runUnitTest (UnitTest data) =
     Test.Internal.DebugLogs.runTestWithDurationAndCollectDebugLogs
         Test.Internal.DebugLogs.modeCollect
@@ -239,7 +244,7 @@ It requires a few arguments:
     with a regular random run.
 
 -}
-runFuzzTest : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float, DebugLogs )
+runFuzzTest : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float, String )
 runFuzzTest (FuzzTest data) seed runs fuzzerInts =
     Test.Internal.DebugLogs.runTestWithDurationAndCollectDebugLogs
         Test.Internal.DebugLogs.modeIgnore
@@ -253,7 +258,7 @@ runFuzzTest (FuzzTest data) seed runs fuzzerInts =
                         Test.Internal.DebugLogs.noDebugLogsForPassingFuzzTests
 
                       else
-                        Test.Internal.DebugLogs.empty
+                        ""
                     )
 
                 Test.Expectation.FuzzTestFail failData ->
@@ -604,3 +609,34 @@ toFuzzTestExpectation expectation =
                     , fuzzerInts = RandomRun.toList data.randomRun
                     }
                 )
+
+
+{-| It’s possible to write code like this:
+
+    defaultShape =
+        makeShape 3
+            |> Debug.log "shape"
+
+    myTest =
+        test "my test" <|
+            \() ->
+                defaultShape.sides
+                    |> Expect.equal 3
+
+In this case, `defaultShape` will be evaluated before the test is run!
+This is due to Elm being an eager language and what the generated JavaScript looks like.
+
+This means that when a test runner starts running its Elm code, there might already
+be a few debug logs made. This task lets you retrieve them.
+
+If you set `globalThis.elmTestPrintDebugLogsBeforeFirstTestToConsole` to a truthy
+value, these debug logs will be printed to the console, and the returned `DebugLogs`
+here will be empty. Runners might want to do this when using the
+[runUnitTestWithUnbufferedLogs](Test.RunnerV2#runUnitTestWithUnbufferedLogs) and
+[runFuzzTestWithUnbufferedLogs](Test.RunnerV2#runFuzzTestWithUnbufferedLogs) functions,
+to consistently print all debug logs to the console.
+
+-}
+getDebugLogsBeforeFirstTestRun : Task x String
+getDebugLogsBeforeFirstTestRun =
+    Test.Internal.DebugLogs.getDebugLogsBeforeFirstTestRun

@@ -11,7 +11,7 @@ var _DebugLogs_modeConsoleLog = __1_CONSOLE_LOG;
 var _DebugLogs_modeCollect = __1_COLLECT;
 var _DebugLogs_modeIgnore = __1_IGNORE;
 
-var _DebugLogs_logs = [];
+var _DebugLogs_logs = '';
 var _DebugLogs_used = false;
 var _DebugLogs_mode = globalThis.elmTestPrintDebugLogsBeforeFirstTestToConsole ? __1_CONSOLE_LOG : __1_COLLECT;
 
@@ -21,7 +21,7 @@ var _DebugLogs_getDebugLogsBeforeFirstTestRun = __Scheduler_binding(function(cal
 {
   if (_DebugLogs_logsBeforeFirstTestRun === undefined) {
     _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
-    _DebugLogs_logs = [];
+    _DebugLogs_logs = '';
     _DebugLogs_used = false;
   }
   callback(__Scheduler_succeed(_DebugLogs_logsBeforeFirstTestRun));
@@ -34,7 +34,7 @@ var _DebugLogs_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAc
     if (_DebugLogs_logsBeforeFirstTestRun === undefined) {
       _DebugLogs_logsBeforeFirstTestRun = _DebugLogs_logs;
     }
-    _DebugLogs_logs = [];
+    _DebugLogs_logs = '';
     _DebugLogs_used = false;
     _DebugLogs_mode = preTestRunAction;
     var start = performance.now();
@@ -46,33 +46,11 @@ var _DebugLogs_runTestWithDurationAndCollectDebugLogs = F3(function(preTestRunAc
 
 function _DebugLogs_rerunFailureToCollectDebugLogs(rerunFailure)
 {
-  _DebugLogs_logs = [];
+  _DebugLogs_logs = '';
   _DebugLogs_used = false;
   _DebugLogs_mode = __1_COLLECT;
   rerunFailure(__Utils_Tuple0);
   return _DebugLogs_logs;
-}
-
-var _DebugLogs_empty = [];
-
-function _DebugLogs_singleton(message)
-{
-  return [message];
-}
-
-var _DebugLogs_fromString = F2(function(separator, string)
-{
-  return string.split(separator);
-});
-
-function _DebugLogs_isEmpty(logs)
-{
-  return logs.length === 0;
-}
-
-function _DebugLogs_encode(logs)
-{
-  return __Json_wrap(logs);
 }
 
 var _Debug_log = F2(function(tag, value)
@@ -83,7 +61,7 @@ var _Debug_log = F2(function(tag, value)
       console.error(tag + ': ' + __Debug_toString(value));
       break;
     case __1_COLLECT:
-      _DebugLogs_logs.push(tag + ': ' + __Debug_toString(value));
+      _DebugLogs_logs += tag + ': ' + __Debug_toString(value) + '\n';
       break;
     default:
       // __1_IGNORE: Do nothing.

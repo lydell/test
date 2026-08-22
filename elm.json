@@ -6,7 +6,6 @@
     "version": "2.2.1",
     "exposed-modules": [
         "Test",
-        "Test.DebugLogs",
         "Test.Runner",
         "Test.RunnerV2",
         "Test.Runner.Failure",
