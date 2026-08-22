@@ -41,6 +41,7 @@ This module supersedes the deprecated [Test.Runner](./Runner) module.
 import Array exposing (Array)
 import Random
 import RandomRun exposing (RandomRun)
+import Task exposing (Task)
 import Test exposing (Test)
 import Test.Distribution exposing (DistributionReport(..))
 import Test.Expectation exposing (Expectation(..))
@@ -138,11 +139,11 @@ getUnitTestLabels (UnitTest data) =
     data.labels
 
 
-{-| Run the unit test.
+{-| Run the unit test. Returns the test result, and the duration it took to run in milliseconds.
 -}
-runUnitTest : UnitTest -> UnitTestExpectation
+runUnitTest : UnitTest -> Task x ( UnitTestExpectation, Float )
 runUnitTest (UnitTest data) =
-    data.thunk ()
+    Internal.runTimed data.thunk
 
 
 {-| A fuzz test. It’s similar to a unit test but has more data, and running
@@ -188,7 +189,9 @@ getFuzzTestRuns (FuzzTest data) =
     data.runs
 
 
-{-| Run the fuzz test. It requires a few arguments:
+{-| Run the fuzz test. Returns the test result, and the duration it took to run in milliseconds.
+
+It requires a few arguments:
 
   - The initial seed.
   - The number of fuzz runs.
@@ -199,9 +202,9 @@ getFuzzTestRuns (FuzzTest data) =
     with a regular random run.
 
 -}
-runFuzzTest : FuzzTest -> Random.Seed -> Int -> List Int -> FuzzTestExpectation
-runFuzzTest (FuzzTest data) =
-    data.thunk
+runFuzzTest : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float )
+runFuzzTest (FuzzTest data) seed runs fuzzerInts =
+    Internal.runTimed (\() -> data.thunk seed runs fuzzerInts)
 
 
 {-| A unit test either passes, or fails with a description and reason.

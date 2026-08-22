@@ -1,9 +1,10 @@
-module Test.Internal exposing (Test, TestVariant(..), blankDescriptionFailure, duplicatedName, failNow, identifyTest, toString, unwrapTestVariant, wrapTestVariant, wrapWithTryCatch)
+module Test.Internal exposing (Test, TestVariant(..), blankDescriptionFailure, duplicatedName, failNow, identifyTest, runTimed, toString, unwrapTestVariant, wrapTestVariant, wrapWithTryCatch)
 
 import Elm.Kernel.Test
 import Random
 import RandomRun exposing (RandomRun)
 import Set exposing (Set)
+import Task exposing (Task)
 import Test.Expectation exposing (Expectation, FuzzTestExpectation)
 import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
 
@@ -122,15 +123,20 @@ toString =
     Elm.Kernel.Debug.toString
 
 
-runThunk : (a -> b) -> a -> Result String b
-runThunk =
-    Elm.Kernel.Test.runThunk
+runTimed : (() -> a) -> Task x ( a, Float )
+runTimed =
+    Elm.Kernel.Test.runTimed
+
+
+runWithTryCatch : (a -> b) -> a -> Result String b
+runWithTryCatch =
+    Elm.Kernel.Test.runWithTryCatch
 
 
 wrapWithTryCatch : (a -> Expectation) -> (a -> Expectation)
 wrapWithTryCatch getExpectation =
     \a ->
-        case runThunk getExpectation a of
+        case runWithTryCatch getExpectation a of
             Ok expectation ->
                 expectation
 
