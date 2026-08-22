@@ -1,4 +1,4 @@
-module Test.Internal exposing (Test(..), blankDescriptionFailure, duplicatedName, failNow, toString, wrapWithTryCatch)
+module Test.Internal exposing (Test, TestVariant(..), blankDescriptionFailure, duplicatedName, failNow, identifyTest, toString, unwrapTestVariant, wrapTestVariant, wrapWithTryCatch)
 
 import Elm.Kernel.Test
 import Random
@@ -8,14 +8,28 @@ import Test.Expectation exposing (Expectation, FuzzTestExpectation)
 import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
 
 
-{-| All variants of this type has the `ElmTestVariant__` prefix so that
-node-test-runner can recognize them in the compiled JavaScript. This lets us
-add more variants here without having to update the runner.
+{-| Opaque type around tests. Use `wrapTestVariant` to create a `Test`
+from a `TestVariant`. It tags the test (using Kernel code) so that
+`identifyTest` can recognize it later. This allows test runners to
+find exposed values of type `Test` without having to implement type
+inference.
+-}
+type Test
+    = Test TestVariant
+
+
+{-| All variants of this type have the `ElmTestVariant__` prefix for
+backwards compatibility with test runners. Test runners use the prefix
+to recognize tests in the compiled JavaScript.
 
 For more information, see <https://github.com/elm-explorations/test/pull/153>
 
+The new way of recognizing tests is using the `identifyTest` function, as
+explained in the `Test` type. The prefix can be removed in a major version
+if we want to clean up the code internally.
+
 -}
-type Test
+type TestVariant
     = ElmTestVariant__UnitTest (() -> Expectation)
     | ElmTestVariant__FuzzTest (Maybe Int) (Random.Seed -> Int -> List Int -> FuzzTestExpectation)
     | ElmTestVariant__Labeled String Test
@@ -25,12 +39,28 @@ type Test
     | ElmTestVariant__Batch (List Test)
 
 
+wrapTestVariant : TestVariant -> Test
+wrapTestVariant testVariant =
+    Elm.Kernel.Test.tagTest (Test testVariant)
+
+
+unwrapTestVariant : Test -> TestVariant
+unwrapTestVariant (Test testVariant) =
+    testVariant
+
+
+identifyTest : a -> Maybe Test
+identifyTest =
+    Elm.Kernel.Test.identifyTest
+
+
 {-| Create a test that always fails for the given reason and description.
 -}
 failNow : { description : String, reason : Reason } -> Test
 failNow record =
     ElmTestVariant__UnitTest
         (\() -> Test.Expectation.fail record)
+        |> wrapTestVariant
 
 
 blankDescriptionFailure : Test
@@ -45,7 +75,7 @@ duplicatedName : List Test -> Result (Set String) (Set String)
 duplicatedName tests =
     let
         names : Test -> List String
-        names test =
+        names (Test test) =
             case test of
                 ElmTestVariant__Labeled str _ ->
                     [ str ]

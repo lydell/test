@@ -2,7 +2,9 @@ module RunnerV2Tests exposing (all)
 
 import Array
 import Expect
+import Fuzz
 import Helpers exposing (expectPass)
+import Json.Encode
 import Random
 import Test exposing (..)
 import Test.Runner.Failure
@@ -11,8 +13,8 @@ import Test.RunnerV2 as Runner exposing (Tests, UnitTestExpectation(..))
 
 all : Test
 all =
-    describe "Test.RunnerV2.toTests"
-        [ describe "test length"
+    describe "Test.RunnerV2"
+        [ describe "toTests"
             [ test "an only inside another only should ignore the non-only siblings" <|
                 \_ ->
                     let
@@ -148,7 +150,7 @@ all =
                             , fuzzTestsLabels = []
                             }
             ]
-        , describe "tagging tests"
+        , describe "tagTests"
             [ test "runners can tag tests with an identifier of choice" <|
                 \() ->
                     let
@@ -182,6 +184,48 @@ all =
                             , ( [ "concatenated" ], "tag3" )
                             ]
             ]
+        , describe "identifyTest"
+            [ test "it identifies all variants of tests" <|
+                \() ->
+                    let
+                        tests =
+                            [ test "test" testImpl
+                            , fuzz Fuzz.int "fuzz" testImpl
+                            , fuzz2 Fuzz.int Fuzz.int "fuzz2" (\_ -> testImpl)
+                            , fuzz3 Fuzz.int Fuzz.int Fuzz.int "fuzz2" (\_ _ -> testImpl)
+                            , fuzzWith { distribution = noDistribution, runs = 1 } Fuzz.int "fuzzWith" testImpl
+                            , only (test "only" testImpl)
+                            , skip (test "skip" testImpl)
+                            , describe "describe" [ test "described" testImpl ]
+                            , concat [ test "concat" testImpl ]
+                            , Runner.tagTest "tag" (test "tagged" testImpl)
+                            , todo "todo"
+                            ]
+                    in
+                    tests
+                        |> List.filterMap Runner.identifyTest
+                        |> Expect.equalLists tests
+            , test "it returns Nothing for other types of values" <|
+                \() ->
+                    let
+                        notTests =
+                            [ Runner.identifyTest ()
+                            , Runner.identifyTest Json.Encode.null
+                            , Runner.identifyTest False
+                            , Runner.identifyTest 0
+                            , Runner.identifyTest 1.5
+                            , Runner.identifyTest ""
+                            , Runner.identifyTest ' '
+                            , Runner.identifyTest []
+                            , Runner.identifyTest {}
+                            , Runner.identifyTest Nothing
+                            , Runner.identifyTest Just
+                            ]
+                    in
+                    notTests
+                        |> List.filterMap identity
+                        |> Expect.equalLists []
+            ]
         , describe "catching exceptions"
             [ test "when a test raises an exception, it is turned into a failure" <|
                 \() ->
@@ -199,7 +243,7 @@ all =
                                     data
                                         |> Expect.all
                                             [ Runner.getUnitTestFailDescription
-                                                >> Expect.equal "This test failed because it threw an exception: \"Error: TODO in module `RunnerV2Tests` on line 189\n\ncrash\""
+                                                >> Expect.equal "This test failed because it threw an exception: \"Error: TODO in module `RunnerV2Tests` on line 233\n\ncrash\""
                                             , Runner.getUnitTestFailReason
                                                 >> Expect.equal Test.Runner.Failure.Custom
                                             ]
@@ -236,13 +280,8 @@ toTests test =
     }
 
 
-passing : Test
-passing =
-    test "A passing test" expectPass
-
-
 {-| Dummy test implementation.
 -}
-testImpl : () -> Expect.Expectation
-testImpl () =
+testImpl : a -> Expect.Expectation
+testImpl _ =
     Expect.pass

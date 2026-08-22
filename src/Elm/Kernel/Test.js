@@ -1,5 +1,6 @@
 /*
 
+import Maybe exposing (Just, Nothing)
 import Result exposing (Err, Ok)
 
 */
@@ -15,3 +16,16 @@ var _Test_runThunk = F2(function(thunk, a)
     return __Result_Err(err.toString());
   }
 });
+
+var _Test_symbol = Symbol("_Test_symbol");
+
+function _Test_tagTest(test)
+{
+  test[_Test_symbol] = true;
+  return test;
+}
+
+function _Test_identifyTest(value)
+{
+  return value && value[_Test_symbol] ? __Maybe_Just(value) : __Maybe_Nothing;
+}

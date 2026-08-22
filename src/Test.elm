@@ -69,6 +69,7 @@ concat tests =
 
             Ok _ ->
                 Internal.ElmTestVariant__Batch tests
+                    |> Internal.wrapTestVariant
 
 
 {-| Apply a description to a list of tests.
@@ -114,13 +115,18 @@ describe untrimmedDesc tests =
             }
 
     else
+        let
+            labeled test_ =
+                Internal.ElmTestVariant__Labeled desc test_
+                    |> Internal.wrapTestVariant
+        in
         case Internal.duplicatedName tests of
             Err dups ->
                 let
                     dupDescription duped =
                         "Contains multiple tests named '" ++ duped ++ "'. Let's rename them so we know which is which."
                 in
-                Internal.ElmTestVariant__Labeled desc <|
+                labeled <|
                     Internal.failNow
                         { description = String.join "\n" (List.map dupDescription <| Set.toList dups)
                         , reason = Invalid DuplicatedName
@@ -128,14 +134,14 @@ describe untrimmedDesc tests =
 
             Ok childrenNames ->
                 if Set.member desc childrenNames then
-                    Internal.ElmTestVariant__Labeled desc <|
+                    labeled <|
                         Internal.failNow
                             { description = "The test '" ++ desc ++ "' contains a child test of the same name. Let's rename them so we know which is which."
                             , reason = Invalid DuplicatedName
                             }
 
                 else
-                    Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__Batch tests)
+                    labeled (Internal.wrapTestVariant (Internal.ElmTestVariant__Batch tests))
 
 
 {-| Return a [`Test`](#Test) that evaluates a single
@@ -161,7 +167,8 @@ test untrimmedDesc thunk =
         Internal.blankDescriptionFailure
 
     else
-        Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest (Internal.wrapWithTryCatch thunk))
+        Internal.ElmTestVariant__Labeled desc (Internal.wrapTestVariant (Internal.ElmTestVariant__UnitTest (Internal.wrapWithTryCatch thunk)))
+            |> Internal.wrapTestVariant
 
 
 {-| Returns a [`Test`](#Test) that is "TODO" (not yet implemented). These tests
@@ -229,8 +236,9 @@ an `only` inside a `skip`, it will also get skipped.
 
 -}
 only : Test -> Test
-only =
-    Internal.ElmTestVariant__Only
+only test_ =
+    Internal.ElmTestVariant__Only test_
+        |> Internal.wrapTestVariant
 
 
 {-| Returns a [`Test`](#Test) that gets skipped.
@@ -265,8 +273,9 @@ an `only` inside a `skip`, it will also get skipped.
 
 -}
 skip : Test -> Test
-skip =
-    Internal.ElmTestVariant__Skipped
+skip test_ =
+    Internal.ElmTestVariant__Skipped test_
+        |> Internal.wrapTestVariant
 
 
 {-| Options [`fuzzWith`](#fuzzWith) accepts.

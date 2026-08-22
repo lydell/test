@@ -230,7 +230,7 @@ distributeSeeds =
 
 distributeSeedsHelp : Bool -> Int -> Random.Seed -> Test -> Distribution
 distributeSeedsHelp hashed runs seed test =
-    case test of
+    case Internal.unwrapTestVariant test of
         Internal.ElmTestVariant__UnitTest aRun ->
             { seed = seed
             , all = [ Runnable (Thunk (\_ -> aRun ())) ]

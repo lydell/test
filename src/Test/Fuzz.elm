@@ -14,7 +14,7 @@ import Simplify
 import Test.Distribution exposing (DistributionReport(..))
 import Test.Distribution.Internal exposing (Distribution(..), ExpectedDistribution(..))
 import Test.Expectation exposing (Expectation(..), FailData, FuzzTestExpectation(..))
-import Test.Internal exposing (Test(..), blankDescriptionFailure)
+import Test.Internal exposing (Test, TestVariant(..), blankDescriptionFailure)
 import Test.Runner.Distribution
 import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
 
@@ -31,7 +31,9 @@ fuzzTest maybeRuns distribution fuzzer untrimmedDesc getExpectation =
         blankDescriptionFailure
 
     else
-        ElmTestVariant__Labeled desc <| validatedFuzzTest desc fuzzer (Test.Internal.wrapWithTryCatch getExpectation) maybeRuns distribution
+        validatedFuzzTest desc fuzzer (Test.Internal.wrapWithTryCatch getExpectation) maybeRuns distribution
+            |> ElmTestVariant__Labeled desc
+            |> Test.Internal.wrapTestVariant
 
 
 {-| Knowing that the fuzz test isn't obviously invalid, run the test and package up the results.
@@ -87,6 +89,7 @@ validatedFuzzTest desc fuzzer getExpectation maybeRuns distribution =
                                         ()
                         }
         )
+        |> Test.Internal.wrapTestVariant
 
 
 tryReproduceFailureFromFuzzerInts : Fuzzer a -> (a -> Expectation) -> List Int -> Maybe RunResult

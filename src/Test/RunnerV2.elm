@@ -4,7 +4,7 @@ module Test.RunnerV2 exposing
     , UnitTestExpectation(..), UnitTestFailData, getUnitTestFailDescription, getUnitTestFailReason
     , FuzzTest, getFuzzTestTag, getFuzzTestLabels, getFuzzTestRuns, runFuzzTest
     , FuzzTestExpectation(..), getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts, rerunFuzzTestFailure
-    , tagTest
+    , identifyTest, tagTest
     )
 
 {-| This is an "experts only" module that exposes functions needed to run tests.
@@ -32,9 +32,9 @@ This module supersedes the deprecated [Test.Runner](./Runner) module.
 @docs FuzzTestExpectation, getFuzzTestPassDistributionReport, FuzzTestPassData, FuzzTestFailData, getFuzzTestFailDescription, getFuzzTestFailReason, getFuzzTestFailDistributionReport, getFuzzTestFailGiven, getFuzzTestFailFuzzerInts, rerunFuzzTestFailure
 
 
-## Tag Tests
+## Runner test operations
 
-@docs tagTest
+@docs identifyTest, tagTest
 
 -}
 
@@ -353,8 +353,18 @@ rerunFuzzTestFailure (FuzzTestFailData data) =
 caching of test results.
 -}
 tagTest : String -> Test -> Test
-tagTest =
-    Internal.ElmTestVariant__Tagged
+tagTest tag test =
+    Internal.ElmTestVariant__Tagged tag test
+        |> Internal.wrapTestVariant
+
+
+{-| This function allows runners to find exposed values of type `Test` without
+having to implement type inference. A runners can collect _all_ exposed values
+from a module, and then use this function to filter out the actual tests.
+-}
+identifyTest : a -> Maybe Test
+identifyTest =
+    Internal.identifyTest
 
 
 {-| Turns a nested [`Test`](Test#Test) (from [`Test.test`](Test#test), [`Test.fuzz`](Test#fuzz) etc.)
@@ -372,7 +382,7 @@ toTests test =
 
 toTestsHelper : String -> List String -> Test -> TestsData
 toTestsHelper tag labels test =
-    case test of
+    case Internal.unwrapTestVariant test of
         Internal.ElmTestVariant__UnitTest thunk ->
             { unitTests =
                 Array.push
