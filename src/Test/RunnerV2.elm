@@ -637,8 +637,8 @@ be a few debug logs made. This task lets you retrieve them.
 If you set `globalThis.elmTestPrintDebugLogsBeforeFirstTestToConsole` to a truthy
 value, these debug logs will be printed to the console, and the returned `DebugLogs`
 here will be empty. Runners might want to do this when using the
-[runUnitTestWithUnbufferedLogs](Test.RunnerV2#runUnitTestWithUnbufferedLogs) and
-[runFuzzTestWithUnbufferedLogs](Test.RunnerV2#runFuzzTestWithUnbufferedLogs) functions,
+[runUnitTestWithUnbufferedLogs](#runUnitTestWithUnbufferedLogs) and
+[runFuzzTestWithUnbufferedLogs](#runFuzzTestWithUnbufferedLogs) functions,
 to consistently print all debug logs to the console.
 
 -}
