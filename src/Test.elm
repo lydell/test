@@ -3,7 +3,7 @@ module Test exposing
     , describe, concat, todo, skip, only
     , fuzz, fuzz2, fuzz3, fuzzWith, FuzzOptions
     , Distribution, noDistribution, reportDistribution, expectDistribution
-    , repeat, testWith
+    , repeat, testWithValue
     )
 
 {-| A module containing functions for creating and managing tests.
@@ -24,7 +24,7 @@ module Test exposing
 
 ## Repeating Tests
 
-@docs repeat, testWith
+@docs repeat, testWithValue
 
 -}
 
@@ -572,10 +572,10 @@ This is useful if you want to run the same test with different inputs – also
 known as _parametrized tests:_
 
     repeat "checking if a string is whitespace only"
-        [ testWith "empty string" { input = "", expected = True }
-        , testWith "space, newline, tab" { input = " \n\t", expected = True }
-        , testWith "only non-whitespace" { input = "a", expected = False }
-        , testWith "mixed" { input = "a b", expected = False }
+        [ testWithValue "empty string" { input = "", expected = True }
+        , testWithValue "space, newline, tab" { input = " \n\t", expected = True }
+        , testWithValue "only non-whitespace" { input = "a", expected = False }
+        , testWithValue "mixed" { input = "a b", expected = False }
         ]
     <|
         \{ input, expected } ->
@@ -596,7 +596,7 @@ guarantee that specific input will ever be generated again. In this case, you
 can use `repeat` to save such inputs as explicit regression tests:
 
     repeat "String.words never returns an empty list"
-        [ testWith "only whitespace" " \n\t"
+        [ testWithValue "only whitespace" " \n\t"
         , fuzz Fuzz.string "fuzz"
         ]
     <|
@@ -611,7 +611,7 @@ If you want to [skip](#skip) tests, or focus on tests with [only](#only), use
 function composition (`<<`):
 
     repeat "String.words never returns an empty list"
-        [ only << testWith "only whitespace" " \n\t"
+        [ only << testWithValue "only whitespace" " \n\t"
         , fuzz Fuzz.string "fuzz"
         ]
     <|
@@ -628,8 +628,8 @@ repeat desc tests thunk =
 {-| This is a small wrapper around [test](#test), which is supposed to be used with [repeat](#repeat).
 See that function for examples.
 -}
-testWith : String -> a -> (a -> Expectation) -> Test
-testWith desc a thunk =
+testWithValue : String -> a -> (a -> Expectation) -> Test
+testWithValue desc a thunk =
     test desc (\() -> thunk a)
 
 
