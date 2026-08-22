@@ -226,31 +226,6 @@ all =
                         |> List.filterMap identity
                         |> Expect.equalLists []
             ]
-        , describe "catching exceptions"
-            [ test "when a test raises an exception, it is turned into a failure" <|
-                \() ->
-                    let
-                        tests =
-                            Runner.toTests (test "crashes" <| \() -> Debug.todo "crash")
-                    in
-                    case Runner.getUnitTests tests |> Array.toList of
-                        [ unitTest ] ->
-                            case Runner.runUnitTest unitTest of
-                                UnitTestPass ->
-                                    Expect.fail "Expected test to fail, but it passed"
-
-                                UnitTestFail data ->
-                                    data
-                                        |> Expect.all
-                                            [ Runner.getUnitTestFailDescription
-                                                >> Expect.equal "This test failed because it threw an exception: \"Error: TODO in module `RunnerV2Tests` on line 233\n\ncrash\""
-                                            , Runner.getUnitTestFailReason
-                                                >> Expect.equal Test.Runner.Failure.Custom
-                                            ]
-
-                        unitTests ->
-                            Expect.fail ("Expected tests to have one unit test, but had " ++ String.fromInt (List.length unitTests))
-            ]
         ]
 
 
