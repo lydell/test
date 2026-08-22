@@ -160,6 +160,10 @@ like to see logs as the test runs.
 
 The returned `Bool` says whether `Debug.log` was used at all while running the test.
 
+Note: The logs are printed to stderr, not stdout like you might be used with
+`Platform.worker` programs running in Node.js. This is because test runners typically
+offer structured output on stdout, and don’t want to mix that with debug logs.
+
 -}
 runUnitTestWithUnbufferedLogs : UnitTest -> Task x ( UnitTestExpectation, Float, Bool )
 runUnitTestWithUnbufferedLogs (UnitTest data) =
@@ -274,6 +278,10 @@ like to see logs as the test runs, or if you’d like to see logs from all the r
 test, not just the failing one (if any).
 
 The returned `Bool` says whether `Debug.log` was used at all while running the test.
+
+Note: The logs are printed to stderr, not stdout like you might be used with
+`Platform.worker` programs running in Node.js. This is because test runners typically
+offer structured output on stdout, and don’t want to mix that with debug logs.
 
 -}
 runFuzzTestWithUnbufferedLogs : FuzzTest -> Random.Seed -> Int -> List Int -> Task x ( FuzzTestExpectation, Float, Bool )
