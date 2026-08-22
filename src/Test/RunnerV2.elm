@@ -528,7 +528,7 @@ toTestsHelper tag labels test =
                 -- Not using record update for performance.
                 { unitTests = sub.unitTests
                 , fuzzTests = sub.fuzzTests
-                , skipCount = sub.skipCount
+                , seenSkip = sub.seenSkip
                 , seenOnly = True
                 }
 
