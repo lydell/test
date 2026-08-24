@@ -8,6 +8,7 @@ import Helpers exposing (..)
 import RandomRunTests
 import RunnerTests
 import RunnerV2Tests
+import RuntimeExceptionTests
 import ShrinkingChallengeTests exposing (shrinkingChallenges)
 import Test exposing (..)
 import Test.Html.EventTests
@@ -30,6 +31,7 @@ all =
         , floatWithinTests
         , RunnerTests.all
         , RunnerV2Tests.all
+        , RuntimeExceptionTests.all
         , elmHtmlTests
         , shrinkingChallenges
         , RandomRunTests.all
